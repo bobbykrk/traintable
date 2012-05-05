@@ -12,6 +12,8 @@ import Data.List
 type StationId = Int
 type Time = UTCTime
 
+data WeekDay = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving (Enum, Show)
+
 data Station = Station {
   station_id :: StationId,
   station_name :: String
@@ -30,7 +32,9 @@ data TrackStation = TrackStation {
 
 data Track = Track {
   track_id :: Int,
-  track_name :: Int
+  track_name :: String,
+  days :: [WeekDay],
+  track_stations :: [TrackStation]
 } deriving (Show)
 
 data Tracks = Tracks {
