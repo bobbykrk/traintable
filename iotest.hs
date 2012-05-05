@@ -23,7 +23,7 @@ mainLoop ls = do
       putStrLn "w 1"
       nme <- getLine
       val <- getLine
-      let lst' = (Elem {name = "asd", value = "qwe"}):ls 
+      let lst' = (Elem {name = nme, value = val}):ls 
      -- lst ++ [(Elem {name = "asd", value = "qwe"})]
       mainLoop lst'
     _ -> do

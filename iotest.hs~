@@ -28,4 +28,4 @@ mainLoop ls = do
       mainLoop lst'
     _ -> do
       putStrLn "wychodzi"
-      return (lst)
+      return (ls)
