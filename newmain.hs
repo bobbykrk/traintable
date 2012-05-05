@@ -4,6 +4,9 @@ import Data.Time.Format
 import Data.Time.Clock
 import Data.Time.Calendar
 import Debug.Trace
+import Text.Printf(printf)
+import Text.Regex.Posix
+import Data.List
 
 type StationId = Int
 type Time = UTCTime
@@ -11,7 +14,7 @@ type Time = UTCTime
 data Station = Station {
   station_id :: StationId,
   station_name :: String
-} deriving (Show, Eq)
+} deriving (Eq)
 
 data Stations = Stations {
   station_counter :: Int,
@@ -34,6 +37,8 @@ data Tracks = Tracks {
   tracks :: [Track]
 } deriving (Show)
 
+instance Show Station where
+  show stn = printf "id: %d nazwa: %s" (station_id stn) (station_name stn)
 
 main = do
   putStrLn "Witaj w programie Timetable"
@@ -76,8 +81,12 @@ stationsEdit stns = do
       --trace show stns'
       putStrLn $ show stns'
       stationsEdit stns'
-    "2" -> return(stns)
-    "3" -> return(stns)
+    "2" -> do
+      stns' <- editStation stns
+      stationsEdit stns'
+    "3" -> do 
+      stns' <- deleteStation stns
+      stationsEdit stns'
     "0" -> return(stns)
     _ -> do
       putStrLn "Nieznana komenda\n"
@@ -95,3 +104,46 @@ addStation stns = do
   let stns' = Stations {station_counter = (station_counter stns + 1), 
   stations = (stations stns) ++ [Station {station_name = stn, station_id = (station_counter stns + 1)}]}
   return (stns')
+
+
+
+editStation stns = do
+  mapM_  (putStrLn . show) (stations stns)
+  return (stns)
+  putStr "podaj id stacji, którą chcesz edytować: "
+  stnid <- getLine
+  let numid =  read stnid :: Int
+  case (find (\v -> (station_id v == numid)) (stations stns)) of
+    Nothing -> do 
+      putStrLn notFounIdxError
+      return (stns)
+    Just found -> do 
+      putStr "podaj nową nazwę stacji: "
+      newname <- getLine
+      let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns)) ++ [Station {station_name = newname, station_id = (station_id found) }]), station_counter = (station_counter stns)}
+      putStrLn "jest"
+      return (stns')
+  where
+  notFounIdxError = "Nie ma takiego indeksu"
+
+
+deleteStation stns = do
+  mapM_  (putStrLn . show) (stations stns)
+  return (stns)
+  putStr "podaj id stacji, którą chcesz usunąć: "
+  stnid <- getLine
+  let numid =  read stnid :: Int
+  case (find (\v -> (station_id v == numid)) (stations stns)) of
+    Nothing -> do 
+      putStrLn notFounIdxError
+      return (stns)
+    Just found -> do 
+      putStr "podaj nową nazwę stacji: "
+      newname <- getLine
+      let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns)) ++ [Station {station_name = newname, station_id = (station_id found) }]), station_counter = (station_counter stns)}
+      putStrLn "jest"
+      return (stns')
+  where
+  notFounIdxError = "Nie ma takiego indeksu"
+
+
