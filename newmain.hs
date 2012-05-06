@@ -11,6 +11,8 @@ import Data.List
 
 type StationId = Int
 type Time = UTCTime
+-- w minutach
+type Duration = Int
 
 data WeekDay = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving (Enum, Show)
 
@@ -26,14 +28,14 @@ data Stations = Stations {
 
 data TrackStation = TrackStation {
   stn_id :: StationId,
-  arrival :: Time,
-  departure :: Time
+  stop_time :: Duration, -- czas postoju na stacji
+  travel_time :: Duration -- czas podróży do następnej stacji
 } deriving (Show)
 
 data Track = Track {
   track_id :: Int,
   track_name :: String,
-  days :: [WeekDay],
+  track_starts :: [Time] -- lista dokładnych momentów (data+czas) wyruszenia pociągu z pierwszej stacji
   track_stations :: [TrackStation]
 } deriving (Show)
 
@@ -158,15 +160,8 @@ deleteStation stns = do
       putStrLn notFounIdxError
       return (stns)
     Just found -> do 
-<<<<<<< HEAD
-      putStr "podaj nową nazwę stacji: "
-      newname <- getLine
-      let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns))), station_counter = (station_counter stns)}
-      putStrLn "jest"
-=======
       let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)-1}
       putStrLn "usunięte"
->>>>>>> adbbd866367db0603c36ca442eb2951e4c934ed7
       return (stns')
   where
   notFounIdxError = "Nie ma takiego indeksu"
