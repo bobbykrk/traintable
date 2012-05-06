@@ -8,8 +8,11 @@ import Text.Printf(printf)
 import Text.Regex.Posix
 import Data.List
 
+
 type StationId = Int
 type Time = UTCTime
+
+data WeekDay = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving (Enum, Show)
 
 data Station = Station {
   station_id :: StationId,
@@ -29,7 +32,9 @@ data TrackStation = TrackStation {
 
 data Track = Track {
   track_id :: Int,
-  track_name :: Int
+  track_name :: String,
+  days :: [WeekDay],
+  track_stations :: [TrackStation]
 } deriving (Show)
 
 data Tracks = Tracks {
@@ -56,10 +61,19 @@ mainMenu stns trs = do
       putStrLn "Edycja stacji"
       stns' <- stationsEdit stns
       mainMenu stns' trs
-    "2" -> return()
-    "3" -> return()
-    "4" -> return()
-    "0" -> return()
+    "2" -> do
+      putStrLn "Edycja kursów - BRAK"
+      trs' <- tracksEdit trs
+      mainMenu stns trs'
+    "3" -> do
+      putStrLn "Wyznaczenie trasy - BRAK"
+      mainMenu stns trs
+    "4" -> do
+      putStrLn "Wygenerowanie rozkładu jazdy - BRAK"
+      mainMenu stns trs
+    "0" -> do
+      putStrLn "Wyjście z programu"
+      return()
     _ -> do
       putStrLn "Nieznana komenda\n"
       mainMenu stns trs
@@ -72,40 +86,47 @@ mainMenu stns trs = do
               \4 - aby wygenerować rozkład jazdy\n\
               \0 - aby wyjść z programu"
 
+---------------------------------------
+-- 1 Edycja stacji              
+---------------------------------------
 stationsEdit stns = do
   putStrLn stationsHelp
   opt <- getLine
   case opt of
     "1" -> do
+      putStrLn "Lista stacji:"
+      mapM_  (putStrLn . show) (stations stns)
+      stationsEdit stns
+    "2" -> do
       stns' <- addStation stns
       --trace show stns'
       putStrLn $ show stns'
       stationsEdit stns'
-    "2" -> do
+    "3" -> do
       stns' <- editStation stns
       stationsEdit stns'
-    "3" -> do 
+    "4" -> do 
       stns' <- deleteStation stns
-      stationsEdit stns'
+      stationsEdit stns' -- uwzględnić istniejące kursy!!
     "0" -> return(stns)
     _ -> do
       putStrLn "Nieznana komenda\n"
       stationsEdit stns
   where
   stationsHelp = "naciśnij:\n\
-              \1 - aby dodać stację\n\
-              \2 - aby edytować stację\n\
-              \3 - aby usunąć stację\n\
+              \1 - aby wypisać stacje\n\  
+              \2 - aby dodać stację\n\
+              \3 - aby edytować stację\n\
+              \4 - aby usunąć stację\n\ 
               \0 - aby powrocić do menu głównego"
-
+              
+              
 addStation stns = do
   putStr "podaj nazwę stacji: "
   stn <- getLine
   let stns' = Stations {station_counter = (station_counter stns + 1), 
   stations = (stations stns) ++ [Station {station_name = stn, station_id = (station_counter stns + 1)}]}
   return (stns')
-
-
 
 editStation stns = do
   mapM_  (putStrLn . show) (stations stns)
@@ -126,7 +147,6 @@ editStation stns = do
   where
   notFounIdxError = "Nie ma takiego indeksu"
 
-
 deleteStation stns = do
   mapM_  (putStrLn . show) (stations stns)
   return (stns)
@@ -138,12 +158,66 @@ deleteStation stns = do
       putStrLn notFounIdxError
       return (stns)
     Just found -> do 
+<<<<<<< HEAD
       putStr "podaj nową nazwę stacji: "
       newname <- getLine
       let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns))), station_counter = (station_counter stns)}
       putStrLn "jest"
+=======
+      let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)-1}
+      putStrLn "usunięte"
+>>>>>>> adbbd866367db0603c36ca442eb2951e4c934ed7
       return (stns')
   where
   notFounIdxError = "Nie ma takiego indeksu"
 
+---------------------------------------
+-- 2 Edycja kursów            
+---------------------------------------
+tracksEdit trs = do
+  --return trs
+  putStrLn tracksHelp
+  opt <- getLine
+  case opt of
+    "1" -> do
+      putStrLn "Lista kursów:"
+      mapM_  (putStrLn . show) (tracks trs)
+      tracksEdit trs
+    "2" -> do
+      trs' <- addTrack trs
+      putStrLn $ show trs'
+      tracksEdit trs'
+    "3" -> do
+      trs' <- editTrack trs
+      tracksEdit trs'
+    "4" -> do 
+      trs' <- deleteTrack trs
+      tracksEdit trs'
+    "0" -> return(trs)
+    _ -> do
+      putStrLn "Nieznana komenda\n"
+      tracksEdit trs
+  where
+  tracksHelp = "naciśnij:\n\
+              \1 - aby wypisać kursy\n\  
+              \2 - aby dodać kurs\n\
+              \3 - aby edytować kurs\n\
+              \4 - aby usunąć kurs\n\
+              \0 - aby powrocić do menu głównego"
+  
+  
+addTrack trs = return trs
+
+editTrack trs = return trs
+
+deleteTrack trs = return trs
+---------------------------------------
+-- 3 Wyznaczenie trasy             
+---------------------------------------
+--getRoute
+
+---------------------------------------
+-- 4 Wygenerowanie rozkładu jazdy            
+---------------------------------------
+--generateSchedule stns trs 
 
