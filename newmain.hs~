@@ -3,6 +3,7 @@ import Text.Regex.Posix
 import Data.Time.Format
 import Data.Time.Clock
 import Data.Time.Calendar
+import Data.Time.Clock.POSIX
 import Debug.Trace
 import Text.Printf(printf)
 import Text.Regex.Posix
@@ -28,14 +29,14 @@ data Stations = Stations {
 
 data TrackStation = TrackStation {
   stn_id :: StationId,
-  stop_time :: Duration, -- czas postoju na stacji
-  travel_time :: Duration -- czas podróży do następnej stacji
+  stop_time :: Duration, -- czas postoju na stacji w minutach
+  travel_time :: Duration -- czas podróży do następnej stacji w minutach
 } deriving (Show)
 
 data Track = Track {
   track_id :: Int,
   track_name :: String,
-  track_starts :: [Time] -- lista dokładnych momentów (data+czas) wyruszenia pociągu z pierwszej stacji
+  track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
   track_stations :: [TrackStation]
 } deriving (Show)
 
@@ -44,8 +45,81 @@ data Tracks = Tracks {
   tracks :: [Track]
 } deriving (Show)
 
+data Edge = Edge {
+  dest_node :: Int,
+  change_weigth :: Int, -- waga krawędzi związana z przesiadką
+  time_weigth :: Int -- waga krawędzi związana z czasem podróży (oczekiwania)
+} deriving (Show)
+
+data Node = Node {
+  prev_node :: Int,  
+  change_dist :: Int,
+  time_dist :: Int
+} deriving (Show)
+
+data ExpandedTrackStation = ExpandedTrackStation {
+  trck_id :: Int,
+  st_id :: Int,
+  arrival :: Time, -- czas wjazdu na stację w formacie posix
+  departure :: Time, -- czas wyjazdu ze stacji w formacie posix
+  node_id :: Int
+} deriving (Show)
+
 instance Show Station where
   show stn = printf "id: %d nazwa: %s" (station_id stn) (station_name stn)
+
+
+addSecondsToUTCTime secs time = posixSecondsToUTCTime ((utcTimeToPOSIXSeconds time) + (realToFrac secs :: POSIXTime) )
+
+diffUTCTimeInSecs timea timeb = floor $ toRational $ (utcTimeToPOSIXSeconds timea) - (utcTimeToPOSIXSeconds timeb)
+
+expandTrackInst [] _ _ _ = []
+expandTrackInst (fst:track_stns) beg tck_id start_time = 
+  (ExpandedTrackStation {trck_id = tck_id,
+    st_id = (stn_id fst),
+    arrival = (addSecondsToUTCTime (beg * 60) start_time), 
+    departure = (addSecondsToUTCTime ((beg + (stop_time fst))* 60)  start_time),
+    node_id = 0
+  }):expandTrackInst track_stns (beg+ (stop_time fst) + (travel_time fst)) tck_id start_time
+
+assignIdToTrack [] _ = []
+assignIdToTrack (fst:trk) n =
+  (fst{node_id = n}):assignIdToTrack trk (n+1)
+
+assignIdsToAll [] _ = []
+assignIdsToAll (fst:exp_tracks) n = (assignIdToTrack fst n):(assignIdsToAll exp_tracks (n+(length fst)))
+
+expandTrack :: Track -> [[ExpandedTrackStation]]
+expandTrack track = 
+  let m = map (expandTrackInst (track_stations track) 0 (track_id track) ) (track_starts track)
+  in assignIdsToAll m 0
+
+-- pobiera wszystkie wierzchołki źródłowe v z danego dnia (time)
+getSourceExpandedTrackStations flat_exp_tracks time v_id =
+  filter (\fst -> (((arrival fst) > today) && ((departure fst) < tomorrow) && (v_id == (st_id fst)))) flat_exp_tracks
+  where
+  UTCTime d t = time
+  today = UTCTime d 0
+  tomorrow =  addSecondsToUTCTime (60*60*24) today
+
+--makeGraph source_v exp_tracks
+--  where
+  -- wszystkie kursy, które mają szanse być w grafie
+--  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
+
+-- algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [Array ?]
+algorithm day max_p src_v dest_v tracks =
+  map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
+  where
+  exp_track_stns = foldl (++) [] (map expandTrack tracks)
+  flat_exp_tracks_stns = map (\[v] -> v) exp_track_stns
+  source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
+
+algorithm_inst exp_tracks dest_v max_p source_exp_track = 
+  []
+  where
+  avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
+
 
 main = do
   putStrLn "Witaj w programie Timetable"
