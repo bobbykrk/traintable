@@ -140,7 +140,7 @@ deleteStation stns = do
     Just found -> do 
       putStr "podaj nową nazwę stacji: "
       newname <- getLine
-      let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns)) , station_id = (station_id found) }]), station_counter = (station_counter stns)}
+      let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns)) ++ [Station {station_name = newname, station_id = (station_id found) }]), station_counter = (station_counter stns)}
       putStrLn "jest"
       return (stns')
   where
