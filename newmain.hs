@@ -158,15 +158,8 @@ deleteStation stns = do
       putStrLn notFounIdxError
       return (stns)
     Just found -> do 
-<<<<<<< HEAD
-      putStr "podaj nową nazwę stacji: "
-      newname <- getLine
-      let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns))), station_counter = (station_counter stns)}
-      putStrLn "jest"
-=======
       let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)-1}
       putStrLn "usunięte"
->>>>>>> adbbd866367db0603c36ca442eb2951e4c934ed7
       return (stns')
   where
   notFounIdxError = "Nie ma takiego indeksu"
