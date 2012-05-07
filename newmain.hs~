@@ -1,3 +1,5 @@
+-- Algorytm Dijkstra wg pomysłu: http://pastebin.com/V9VMUfs3
+
 import Control.Monad
 import Text.Regex.Posix
 import Data.Time.Format
@@ -8,12 +10,17 @@ import Debug.Trace
 import Text.Printf(printf)
 import Text.Regex.Posix
 import Data.List
+import Data.Maybe
 
 
 type StationId = Int
 type Time = UTCTime
 -- w minutach
 type Duration = Int
+type Weigth = Int
+type NodeId = Int
+
+data Cost = Finite (Weigth, Weigth) | Infty deriving (Eq, Ord, Show) 
 
 data WeekDay = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving (Enum, Show)
 
@@ -46,15 +53,16 @@ data Tracks = Tracks {
 } deriving (Show)
 
 data Edge = Edge {
-  dest_node :: Int,
-  change_weigth :: Int, -- waga krawędzi związana z przesiadką
-  time_weigth :: Int -- waga krawędzi związana z czasem podróży (oczekiwania)
+  src_node :: NodeId,
+  dest_node :: NodeId,
+  change_weigth :: Weigth, -- waga krawędzi związana z przesiadką
+  time_weigth :: Weigth -- waga krawędzi związana z czasem podróży (oczekiwania)
 } deriving (Show)
 
-data Node = Node {
-  prev_node :: Int,  
-  change_dist :: Int,
-  time_dist :: Int
+data PathCost = PathCost {
+  prev_node :: Int, -- id poprzedniego wierzchołka w celu odbudowy drogi
+  nod_id :: Int, -- id wierzchołka
+  dist :: Cost -- dotychczasowy koszt ścieżki
 } deriving (Show)
 
 data ExpandedTrackStation = ExpandedTrackStation {
@@ -62,12 +70,42 @@ data ExpandedTrackStation = ExpandedTrackStation {
   st_id :: Int,
   arrival :: Time, -- czas wjazdu na stację w formacie posix
   departure :: Time, -- czas wyjazdu ze stacji w formacie posix
-  node_id :: Int
+  node_id :: NodeId
 } deriving (Show)
 
 instance Show Station where
   show stn = printf "id: %d nazwa: %s" (station_id stn) (station_name stn)
 
+instance Eq Edge where
+  (==) = edgeEq
+
+instance Eq PathCost where
+  (==) = pathCostEq
+
+--instance Ord Cost where
+--  (<) = costOrd
+
+instance Ord PathCost where
+  (<) = pathCostOrd 
+
+edgeEq :: Edge -> Edge -> Bool
+edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
+
+pathCostEq :: PathCost -> PathCost -> Bool
+pathCostEq a b = ((nod_id a) == (nod_id b))
+
+--costOrd :: Cost -> Cost -> Cost
+--costOrd (Finite (ap,ac)) (Finite (bp,bc)) = ((ap < bp) || ((ap == bp) && (ac < bc)))
+--costOrd Infty _ = False
+--costOrd (Finite _) Infty = True
+
+
+pathCostOrd :: PathCost -> PathCost -> Bool
+pathCostOrd a b = (dist a) < (dist b)
+
+sumCosts :: Cost -> Cost -> Cost
+sumCosts (Finite (wpa,wca)) (Finite (wpb,wcb)) = Finite ((wpa+wpb),(wca+wcb))
+sumCosts _ _ = Infty
 
 addSecondsToUTCTime secs time = posixSecondsToUTCTime ((utcTimeToPOSIXSeconds time) + (realToFrac secs :: POSIXTime) )
 
@@ -119,6 +157,65 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   []
   where
   avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
+  flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
+  graph = makeEdges avail_exp_tracks
+
+
+
+
+makeEdges :: [[ExpandedTrackStation]] -> [Edge]
+makeEdges avail_exp_tracks = 
+--  trace (show stns)
+  track_edges ++ track_edges
+  where
+    flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
+    stns = (nub . (map (\v -> st_id v) )) flat_avail_exp_tracks  
+    station_edges = foldl (++) [] (map (makeStationEdge flat_avail_exp_tracks) stns)
+    track_edges = foldl (++) [] (map makeTrackEdge avail_exp_tracks)
+
+
+makeStationEdge flat_avail_exp_tracks stn_id =
+  [Edge {src_node = (node_id x),dest_node = (node_id y), change_weigth = 1, time_weigth = (diffUTCTimeInSecs (departure y) (arrival x)) }|x <- flat_avail_exp_tracks, y <- flat_avail_exp_tracks,  (departure y) > (arrival x), (node_id x) /= (node_id y), (st_id x) == stn_id, (st_id y) == stn_id]
+
+nodes :: [Edge] -> [NodeId]
+nodes edges = nub (foldl (++) [] (map (\v -> [src_node v, dest_node v]) edges))
+
+
+findEInGraph _ [] = Nothing
+findEInGraph (u,v) (fst:edges)
+  | (u == (src_node fst) && v == (dest_node fst)) = Just ((change_weigth fst), (time_weigth fst))
+  | otherwise = findEInGraph (u,v) edges
+
+findE :: (NodeId, NodeId) -> [Edge] -> Cost
+findE edge = maybe Infty Finite . findEInGraph edge
+
+remove :: Eq a => a -> [a] -> [a]
+remove = flip (\\) . flip (:) []
+
+dijkstra :: [Edge] -> NodeId -> [PathCost]
+dijkstra graph src = 
+  addPaths [PathCost{prev_node = src, nod_id = node, dist = (findE (src, node) graph)}| node <- nodes graph] []
+  where
+    addPaths :: [PathCost] -> [PathCost] -> [PathCost]
+    addPaths [] ac = ac
+    addPaths ps ac =
+      addPaths (map relax (remove minp ps)) (minp : ac)
+      where
+        minp = minimum ps
+        relax pc = if (dist pc) < nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
+          where
+            nc = min (dist pc) (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
+
+
+makeTrackEdge [] = []
+makeTrackEdge [x] = []
+makeTrackEdge (fstel:secel:avail_exp_track) = 
+  (Edge {src_node = (node_id fstel),
+         dest_node = (node_id secel), 
+         change_weigth = 0, 
+         time_weigth = (diffUTCTimeInSecs (arrival secel) (departure fstel))
+         }):makeTrackEdge(secel:avail_exp_track)
+  
 
 
 main = do
