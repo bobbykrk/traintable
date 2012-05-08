@@ -14,6 +14,7 @@ import Data.Maybe
 
 
 type StationId = Int
+type TrackId = Int
 type Time = UTCTime
 -- w minutach
 type Duration = Int
@@ -41,7 +42,7 @@ data TrackStation = TrackStation {
 } deriving (Show)
 
 data Track = Track {
-  track_id :: Int,
+  track_id :: TrackId,
   track_name :: String,
   track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
   track_stations :: [TrackStation]
@@ -159,6 +160,7 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
   flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
   graph = makeEdges avail_exp_tracks
+  paths = dijkstra graph (node_id source_exp_track)
 
 
 
@@ -215,7 +217,23 @@ makeTrackEdge (fstel:secel:avail_exp_track) =
          change_weigth = 0, 
          time_weigth = (diffUTCTimeInSecs (arrival secel) (departure fstel))
          }):makeTrackEdge(secel:avail_exp_track)
-  
+
+
+genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
+genTrackTimetable _ [] = []
+genTrackTimetable stn (fst:exp_tracks) =
+  case find (\v -> (trck_id v) == stn) fst of
+    Nothing -> genTrackTimetable stn exp_tracks
+    Just v -> (trck_id v, arrival v, departure v):(genTrackTimetable stn exp_tracks)
+
+
+generateTimetable :: StationId -> [Track] -> [(TrackId, Time, Time)]
+generateTimetable _ [] = []
+generateTimetable stn (fst:tracks) = 
+  foldl (++) [] (genTrackTimetable stn exp_tracks)
+  where
+    exp_tracks = expandTrack fst
+
 
 
 main = do
