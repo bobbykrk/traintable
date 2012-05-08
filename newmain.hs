@@ -234,7 +234,8 @@ generateTimetable stn (fst:tracks) =
   where
     exp_tracks = expandTrack fst
 
-
+sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
+sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
 
 main = do
   putStrLn "Witaj w programie Timetable"
