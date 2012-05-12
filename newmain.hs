@@ -13,9 +13,7 @@ import Data.List
 import Data.Maybe
 import Char
 import Locale
---import Prelude hiding (catch)
 import qualified Control.Exception as C
-
 
 
 type StationId = Int
@@ -85,7 +83,6 @@ instance Show Station where
 --instance Show Track where
 --  show tr = printf "id: %d nazwa: %s" (track_id tr) (track_name tr)
 
-
 instance Eq Edge where
   (==) = edgeEq
 
@@ -97,154 +94,6 @@ instance Eq PathCost where
 
 instance Ord PathCost where
   (<) = pathCostOrd 
-
-edgeEq :: Edge -> Edge -> Bool
-edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
-
-pathCostEq :: PathCost -> PathCost -> Bool
-pathCostEq a b = ((nod_id a) == (nod_id b))
-
---costOrd :: Cost -> Cost -> Cost
---costOrd (Finite (ap,ac)) (Finite (bp,bc)) = ((ap < bp) || ((ap == bp) && (ac < bc)))
---costOrd Infty _ = False
---costOrd (Finite _) Infty = True
-
-
-pathCostOrd :: PathCost -> PathCost -> Bool
-pathCostOrd a b = (dist a) < (dist b)
-
-sumCosts :: Cost -> Cost -> Cost
-sumCosts (Finite (wpa,wca)) (Finite (wpb,wcb)) = Finite ((wpa+wpb),(wca+wcb))
-sumCosts _ _ = Infty
-
-addSecondsToUTCTime secs time = posixSecondsToUTCTime ((utcTimeToPOSIXSeconds time) + (realToFrac secs :: POSIXTime) )
-
-diffUTCTimeInSecs timea timeb = floor $ toRational $ (utcTimeToPOSIXSeconds timea) - (utcTimeToPOSIXSeconds timeb)
-
-expandTrackInst [] _ _ _ = []
-expandTrackInst (fst:track_stns) beg tck_id start_time = 
-  (ExpandedTrackStation {trck_id = tck_id,
-    st_id = (stn_id fst),
-    arrival = (addSecondsToUTCTime (beg * 60) start_time), 
-    departure = (addSecondsToUTCTime ((beg + (stop_time fst))* 60)  start_time),
-    node_id = 0
-  }):expandTrackInst track_stns (beg+ (stop_time fst) + (travel_time fst)) tck_id start_time
-
-assignIdToTrack [] _ = []
-assignIdToTrack (fst:trk) n =
-  (fst{node_id = n}):assignIdToTrack trk (n+1)
-
-assignIdsToAll [] _ = []
-assignIdsToAll (fst:exp_tracks) n = (assignIdToTrack fst n):(assignIdsToAll exp_tracks (n+(length fst)))
-
-expandTrack :: Track -> [[ExpandedTrackStation]]
-expandTrack track = 
-  let m = map (expandTrackInst (track_stations track) 0 (track_id track) ) (track_starts track)
-  in assignIdsToAll m 0
-
--- pobiera wszystkie wierzchołki źródłowe v z danego dnia (time)
-getSourceExpandedTrackStations flat_exp_tracks time v_id =
-  filter (\fst -> (((arrival fst) > today) && ((departure fst) < tomorrow) && (v_id == (st_id fst)))) flat_exp_tracks
-  where
-  UTCTime d t = time
-  today = UTCTime d 0
-  tomorrow =  addSecondsToUTCTime (60*60*24) today
-
---makeGraph source_v exp_tracks
---  where
-  -- wszystkie kursy, które mają szanse być w grafie
---  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
-
--- algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [Array ?]
-algorithm day max_p src_v dest_v tracks =
-  map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
-  where
-  exp_track_stns = foldl (++) [] (map expandTrack tracks)
-  flat_exp_tracks_stns = map (\[v] -> v) exp_track_stns
-  source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
-
-algorithm_inst exp_tracks dest_v max_p source_exp_track = 
-  []
-  where
-  avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
-  flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
-  graph = makeEdges avail_exp_tracks
-  paths = dijkstra graph (node_id source_exp_track)
-
-
-
-
-makeEdges :: [[ExpandedTrackStation]] -> [Edge]
-makeEdges avail_exp_tracks = 
---  trace (show stns)
-  track_edges ++ track_edges
-  where
-    flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
-    stns = (nub . (map (\v -> st_id v) )) flat_avail_exp_tracks  
-    station_edges = foldl (++) [] (map (makeStationEdge flat_avail_exp_tracks) stns)
-    track_edges = foldl (++) [] (map makeTrackEdge avail_exp_tracks)
-
-
-makeStationEdge flat_avail_exp_tracks stn_id =
-  [Edge {src_node = (node_id x),dest_node = (node_id y), change_weigth = 1, time_weigth = (diffUTCTimeInSecs (departure y) (arrival x)) }|x <- flat_avail_exp_tracks, y <- flat_avail_exp_tracks,  (departure y) > (arrival x), (node_id x) /= (node_id y), (st_id x) == stn_id, (st_id y) == stn_id]
-
-nodes :: [Edge] -> [NodeId]
-nodes edges = nub (foldl (++) [] (map (\v -> [src_node v, dest_node v]) edges))
-
-
-findEInGraph _ [] = Nothing
-findEInGraph (u,v) (fst:edges)
-  | (u == (src_node fst) && v == (dest_node fst)) = Just ((change_weigth fst), (time_weigth fst))
-  | otherwise = findEInGraph (u,v) edges
-
-findE :: (NodeId, NodeId) -> [Edge] -> Cost
-findE edge = maybe Infty Finite . findEInGraph edge
-
-remove :: Eq a => a -> [a] -> [a]
-remove = flip (\\) . flip (:) []
-
-dijkstra :: [Edge] -> NodeId -> [PathCost]
-dijkstra graph src = 
-  addPaths [PathCost{prev_node = src, nod_id = node, dist = (findE (src, node) graph)}| node <- nodes graph] []
-  where
-    addPaths :: [PathCost] -> [PathCost] -> [PathCost]
-    addPaths [] ac = ac
-    addPaths ps ac =
-      addPaths (map relax (remove minp ps)) (minp : ac)
-      where
-        minp = minimum ps
-        relax pc = if (dist pc) < nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
-          where
-            nc = min (dist pc) (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
-
-
-makeTrackEdge [] = []
-makeTrackEdge [x] = []
-makeTrackEdge (fstel:secel:avail_exp_track) = 
-  (Edge {src_node = (node_id fstel),
-         dest_node = (node_id secel), 
-         change_weigth = 0, 
-         time_weigth = (diffUTCTimeInSecs (arrival secel) (departure fstel))
-         }):makeTrackEdge(secel:avail_exp_track)
-
-
-genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
-genTrackTimetable _ [] = []
-genTrackTimetable stn (fst:exp_tracks) =
-  case find (\v -> (trck_id v) == stn) fst of
-    Nothing -> genTrackTimetable stn exp_tracks
-    Just v -> (trck_id v, arrival v, departure v):(genTrackTimetable stn exp_tracks)
-
-
-generateTimetable :: StationId -> [Track] -> [(TrackId, Time, Time)]
-generateTimetable _ [] = []
-generateTimetable stn (fst:tracks) = 
-  (genTrackTimetable stn exp_tracks) ++ (generateTimetable stn tracks)
-  where
-    exp_tracks = expandTrack fst
-
-sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
-sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
 
 main = do
   putStrLn "Witaj w programie Timetable"
@@ -289,6 +138,7 @@ mainMenu stns trs = do
 ---------------------------------------
 -- 1 Edycja stacji              
 ---------------------------------------
+
 stationsEdit stns = do
   putStrLn stationsHelp
   opt <- getLine
@@ -380,6 +230,7 @@ deleteStation stns = do
 ---------------------------------------
 -- 2 Edycja kursów            
 ---------------------------------------
+
 tracksEdit stns trs = do
   --return trs
   putStrLn tracksHelp
@@ -639,14 +490,160 @@ addDate dates =  do
   where
   addDateHelp = "naciśnij:\n\
                 \1 - aby wprowadzić kolejną datę\n\  
-                \0 - aby zakończyć wpisywanie dat"                 
+                \0 - aby zakończyć wpisywanie dat"          
+                
 ---------------------------------------
 -- 3 Wyznaczenie trasy             
 ---------------------------------------
 --getRoute
 
+edgeEq :: Edge -> Edge -> Bool
+edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
+
+pathCostEq :: PathCost -> PathCost -> Bool
+pathCostEq a b = ((nod_id a) == (nod_id b))
+
+--costOrd :: Cost -> Cost -> Cost
+--costOrd (Finite (ap,ac)) (Finite (bp,bc)) = ((ap < bp) || ((ap == bp) && (ac < bc)))
+--costOrd Infty _ = False
+--costOrd (Finite _) Infty = True
+
+pathCostOrd :: PathCost -> PathCost -> Bool
+pathCostOrd a b = (dist a) < (dist b)
+
+sumCosts :: Cost -> Cost -> Cost
+sumCosts (Finite (wpa,wca)) (Finite (wpb,wcb)) = Finite ((wpa+wpb),(wca+wcb))
+sumCosts _ _ = Infty
+
+addSecondsToUTCTime secs time = posixSecondsToUTCTime ((utcTimeToPOSIXSeconds time) + (realToFrac secs :: POSIXTime) )
+
+diffUTCTimeInSecs timea timeb = floor $ toRational $ (utcTimeToPOSIXSeconds timea) - (utcTimeToPOSIXSeconds timeb)
+
+expandTrackInst [] _ _ _ = []
+expandTrackInst (fst:track_stns) beg tck_id start_time = 
+  (ExpandedTrackStation {trck_id = tck_id,
+    st_id = (stn_id fst),
+    arrival = (addSecondsToUTCTime (beg * 60) start_time), 
+    departure = (addSecondsToUTCTime ((beg + (stop_time fst))* 60)  start_time),
+    node_id = 0
+  }):expandTrackInst track_stns (beg+ (stop_time fst) + (travel_time fst)) tck_id start_time
+
+assignIdToTrack [] _ = []
+assignIdToTrack (fst:trk) n =
+  (fst{node_id = n}):assignIdToTrack trk (n+1)
+
+assignIdsToAll [] _ = []
+assignIdsToAll (fst:exp_tracks) n = (assignIdToTrack fst n):(assignIdsToAll exp_tracks (n+(length fst)))
+
+expandTrack :: Track -> [[ExpandedTrackStation]]
+expandTrack track = 
+  let m = map (expandTrackInst (track_stations track) 0 (track_id track) ) (track_starts track)
+  in assignIdsToAll m 0
+
+-- pobiera wszystkie wierzchołki źródłowe v z danego dnia (time)
+getSourceExpandedTrackStations flat_exp_tracks time v_id =
+  filter (\fst -> (((arrival fst) > today) && ((departure fst) < tomorrow) && (v_id == (st_id fst)))) flat_exp_tracks
+  where
+  UTCTime d t = time
+  today = UTCTime d 0
+  tomorrow =  addSecondsToUTCTime (60*60*24) today
+
+--makeGraph source_v exp_tracks
+--  where
+  -- wszystkie kursy, które mają szanse być w grafie
+--  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
+
+-- algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [Array ?]
+algorithm day max_p src_v dest_v tracks =
+  map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
+  where
+  exp_track_stns = foldl (++) [] (map expandTrack tracks)
+  flat_exp_tracks_stns = map (\[v] -> v) exp_track_stns
+  source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
+
+algorithm_inst exp_tracks dest_v max_p source_exp_track = 
+  []
+  where
+  avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
+  flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
+  graph = makeEdges avail_exp_tracks
+  paths = dijkstra graph (node_id source_exp_track)
+
+
+makeEdges :: [[ExpandedTrackStation]] -> [Edge]
+makeEdges avail_exp_tracks = 
+--  trace (show stns)
+  track_edges ++ track_edges
+  where
+    flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
+    stns = (nub . (map (\v -> st_id v) )) flat_avail_exp_tracks  
+    station_edges = foldl (++) [] (map (makeStationEdge flat_avail_exp_tracks) stns)
+    track_edges = foldl (++) [] (map makeTrackEdge avail_exp_tracks)
+
+
+makeStationEdge flat_avail_exp_tracks stn_id =
+  [Edge {src_node = (node_id x),dest_node = (node_id y), change_weigth = 1, time_weigth = (diffUTCTimeInSecs (departure y) (arrival x)) }|x <- flat_avail_exp_tracks, y <- flat_avail_exp_tracks,  (departure y) > (arrival x), (node_id x) /= (node_id y), (st_id x) == stn_id, (st_id y) == stn_id]
+
+nodes :: [Edge] -> [NodeId]
+nodes edges = nub (foldl (++) [] (map (\v -> [src_node v, dest_node v]) edges))
+
+
+findEInGraph _ [] = Nothing
+findEInGraph (u,v) (fst:edges)
+  | (u == (src_node fst) && v == (dest_node fst)) = Just ((change_weigth fst), (time_weigth fst))
+  | otherwise = findEInGraph (u,v) edges
+
+findE :: (NodeId, NodeId) -> [Edge] -> Cost
+findE edge = maybe Infty Finite . findEInGraph edge
+
+remove :: Eq a => a -> [a] -> [a]
+remove = flip (\\) . flip (:) []
+
+dijkstra :: [Edge] -> NodeId -> [PathCost]
+dijkstra graph src = 
+  addPaths [PathCost{prev_node = src, nod_id = node, dist = (findE (src, node) graph)}| node <- nodes graph] []
+  where
+    addPaths :: [PathCost] -> [PathCost] -> [PathCost]
+    addPaths [] ac = ac
+    addPaths ps ac =
+      addPaths (map relax (remove minp ps)) (minp : ac)
+      where
+        minp = minimum ps
+        relax pc = if (dist pc) < nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
+          where
+            nc = min (dist pc) (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
+
+
+makeTrackEdge [] = []
+makeTrackEdge [x] = []
+makeTrackEdge (fstel:secel:avail_exp_track) = 
+  (Edge {src_node = (node_id fstel),
+         dest_node = (node_id secel), 
+         change_weigth = 0, 
+         time_weigth = (diffUTCTimeInSecs (arrival secel) (departure fstel))
+         }):makeTrackEdge(secel:avail_exp_track)
+
+
+genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
+genTrackTimetable _ [] = []
+genTrackTimetable stn (fst:exp_tracks) =
+  case find (\v -> (trck_id v) == stn) fst of
+    Nothing -> genTrackTimetable stn exp_tracks
+    Just v -> (trck_id v, arrival v, departure v):(genTrackTimetable stn exp_tracks)
+
+
 ---------------------------------------
 -- 4 Wygenerowanie rozkładu jazdy            
 ---------------------------------------
 --generateSchedule stns trs 
+
+generateTimetable :: StationId -> [Track] -> [(TrackId, Time, Time)]
+generateTimetable _ [] = []
+generateTimetable stn (fst:tracks) = 
+  (genTrackTimetable stn exp_tracks) ++ (generateTimetable stn tracks)
+  where
+    exp_tracks = expandTrack fst
+
+sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
+sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
 
