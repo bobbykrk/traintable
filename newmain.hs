@@ -631,12 +631,6 @@ genTrackTimetable stn (fst:exp_tracks) =
     Nothing -> genTrackTimetable stn exp_tracks
     Just v -> (trck_id v, arrival v, departure v):(genTrackTimetable stn exp_tracks)
 
-
----------------------------------------
--- 4 Wygenerowanie rozkładu jazdy            
----------------------------------------
---generateSchedule stns trs 
-
 generateTimetable :: StationId -> [Track] -> [(TrackId, Time, Time)]
 generateTimetable _ [] = []
 generateTimetable stn (fst:tracks) = 
@@ -646,4 +640,11 @@ generateTimetable stn (fst:tracks) =
 
 sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
 sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
+
+---------------------------------------
+-- 4 Wygenerowanie rozkładu jazdy            
+---------------------------------------
+--generateSchedule stns trs 
+
+
 
