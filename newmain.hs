@@ -94,6 +94,7 @@ instance Eq PathCost where
 
 instance Ord PathCost where
   (<) = pathCostOrd 
+  min a b =  if (dist a) < (dist b) then a else b
 
 main = do
   putStrLn "Witaj w programie Timetable"
@@ -509,7 +510,7 @@ pathCostEq a b = ((nod_id a) == (nod_id b))
 --costOrd (Finite _) Infty = True
 
 pathCostOrd :: PathCost -> PathCost -> Bool
-pathCostOrd a b = (dist a) < (dist b)
+pathCostOrd a b = trace "xxx" ((dist a) < (dist b))
 
 sumCosts :: Cost -> Cost -> Cost
 sumCosts (Finite (wpa,wca)) (Finite (wpb,wcb)) = Finite ((wpa+wpb),(wca+wcb))
@@ -561,13 +562,41 @@ algorithm day max_p src_v dest_v tracks =
   flat_exp_tracks_stns = map (\[v] -> v) exp_track_stns
   source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
 
+getPathNodes :: NodeId -> NodeId -> [PathCost] -> Maybe [NodeId]
+getPathNodes src_nd dst_nd paths =
+  if src_nd == dst_nd 
+    then
+      Just [src_nd]
+    else
+      case v of
+        Nothing -> Nothing
+        Just n -> 
+          if dist n == Infty 
+            then Nothing
+            else
+              Just (rest ++ [(nod_id n)])
+              where
+                Just rest = (getPathNodes src_nd (prev_node n) paths)
+      where
+        v = find (\u -> (nod_id u) == dst_nd) paths
+
+
+
+buildPath ::  [NodeId] -> [ExpandedTrackStation] -> [ExpandedTrackStation]
+buildPath paths exp_tracks = 
+  filter (\track -> (any (\v -> v == (node_id track)) paths)) exp_tracks
+
+
 algorithm_inst exp_tracks dest_v max_p source_exp_track = 
-  []
+  case pathNodes of
+    Nothing -> []
+    Just pth -> buildPath pth flat_avail_exp_tracks
   where
   avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
   flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
   graph = makeEdges avail_exp_tracks
   paths = dijkstra graph (node_id source_exp_track)
+  pathNodes = getPathNodes (node_id source_exp_track) dest_v paths
 
 
 makeEdges :: [[ExpandedTrackStation]] -> [Edge]
@@ -596,12 +625,17 @@ findEInGraph (u,v) (fst:edges)
 findE :: (NodeId, NodeId) -> [Edge] -> Cost
 findE edge = maybe Infty Finite . findEInGraph edge
 
+
+
 remove :: Eq a => a -> [a] -> [a]
 remove = flip (\\) . flip (:) []
 
+sumPaths :: PathCost -> PathCost -> PathCost
+sumPaths a b =  PathCost {prev_node = (nod_id a), nod_id = (nod_id b), dist = (sumCosts (dist a) (dist b))}
+
 dijkstra :: [Edge] -> NodeId -> [PathCost]
 dijkstra graph src = 
-  addPaths [PathCost{prev_node = src, nod_id = node, dist = (findE (src, node) graph)}| node <- nodes graph] []
+  addPaths [PathCost{prev_node = 1, nod_id = node, dist = (findE (src, node) graph)}| node <- nodes graph] []
   where
     addPaths :: [PathCost] -> [PathCost] -> [PathCost]
     addPaths [] ac = ac
