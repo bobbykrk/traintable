@@ -121,7 +121,7 @@ mainMenu stns trs = do
       mainMenu stns trs
     "4" -> do
       putStrLn "Wygenerowanie rozkładu jazdy"
-      let sched = generateSchedule stns trs
+      sched <- generateSchedule stns trs
       --print sched
       mainMenu stns trs
     "0" -> do
@@ -606,7 +606,7 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   -- wszystkie kursy, które mają szanse być w grafie
 --  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
 
-algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[a]]
+--algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[a]]
 algorithm day max_p src_v dest_v tracks =
   map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
   where
