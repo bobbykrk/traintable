@@ -116,9 +116,12 @@ mainMenu stns trs = do
       mainMenu stns trs'
     "3" -> do
       putStrLn "Wyznaczenie trasy - BRAK"
+      getRoute stns trs
       mainMenu stns trs
     "4" -> do
-      putStrLn "Wygenerowanie rozkładu jazdy - BRAK"
+      putStrLn "Wygenerowanie rozkładu jazdy"
+      let sched = generateSchedule stns trs
+      --print sched
       mainMenu stns trs
     "0" -> do
       putStrLn "Wyjście z programu"
@@ -181,7 +184,6 @@ addStation stns = do
 --zmienia nazwę stacji  
 editStation stns = do
   mapM_  (putStrLn . show) (stations stns)
-  return stns
   putStr "podaj id stacji, którą chcesz edytować: "
   stnid <- getLine
   if stnid == [] || checkDigits stnid == False
@@ -473,8 +475,8 @@ checkDigits (x:xs) = if isDigit x then
 addDate dates =  do
   putStrLn "Podaj datę w formacie: rrrr-mm-dd hh:mm"
   x <- getLine
-  let Just x1 = parseTime defaultTimeLocale "%F %R" x :: Maybe UTCTime;
-  res <- C.try(print x1)::IO (Either C.SomeException ())
+  let Just x' = parseTime defaultTimeLocale "%F %R" x :: Maybe UTCTime;
+  res <- C.try(print x')::IO (Either C.SomeException ())
   case res of
     Left err -> do putStrLn "Błędnie podana data!"
                    addDate dates
@@ -482,20 +484,70 @@ addDate dates =  do
       putStrLn addDateHelp
       sel <- getLine
       case sel of
-        "1" -> do addDate (dates ++ [x1])
-        "0" -> return (dates ++ [x1])
+        "1" -> do addDate (dates ++ [x'])
+        "0" -> return (dates ++ [x'])
         _ -> do
           putStrLn "Nieznana komenda\n"
           addDate dates
   where
   addDateHelp = "naciśnij:\n\
                 \1 - aby wprowadzić kolejną datę\n\  
-                \0 - aby zakończyć wpisywanie dat"          
+                \0 - aby zakończyć wpisywanie dat"   
+
+addDate2 = do                
+  putStrLn "Podaj datę w formacie: rrrr-mm-dd"
+  x <- getLine
+  let Just x' = parseTime defaultTimeLocale "%F" x :: Maybe UTCTime;
+  res <- C.try(print x')::IO (Either C.SomeException ())
+  case res of
+    Left err -> do putStrLn "Błędnie podana data!"
+                   addDate2
+    Right q  -> return x'
                 
 ---------------------------------------
 -- 3 Wyznaczenie trasy             
 ---------------------------------------
---getRoute
+--getRoute stn trs
+--algorithm day max_p src_v dest_v tracks
+--day     data UTCTime
+--max_p   Int
+--src_v   StationId
+--dest_v  StationId
+--tracks  [Track]
+
+getRoute stns trs = do
+  putStr "Lista stacji:"
+  mapM_  (putStrLn . show) (stations stns)
+  day <- addDate2
+  putStr "podaj id pierwszej stacji: "
+  src_v <- getLine
+  let src_v' =  read src_v :: Int
+  putStr "podaj id stacji docelowej: "
+  dest_v <- getLine
+  let dest_v' =  read dest_v :: Int
+  putStr "podaj max liczbę przesiadek: "
+  max_p <- getLine
+  let max_p' =  read max_p :: Int
+  let res = algorithm day max_p' src_v' dest_v' (tracks trs)
+  return res
+  --print res
+  
+--  if stnid == [] || checkDigits stnid == False
+--  then do
+--    putStrLn notFounIdxError
+--  else do
+--    let numid =  read stnid :: Int
+--    case (find (\v -> (station_id v == numid)) (stations stns)) of
+--      Nothing -> do 
+--        putStrLn notFounIdxError
+--      Just found -> do 
+--        let x = generateTimetable numid (tracks trs)
+        --let x = sortTimeTable x
+--        print x
+--  where
+--  notFounIdxError = "Nie ma takiego indeksu"
+
+
 
 edgeEq :: Edge -> Edge -> Bool
 edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
@@ -553,7 +605,7 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   -- wszystkie kursy, które mają szanse być w grafie
 --  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
 
--- algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [Array ?]
+algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[a]]
 algorithm day max_p src_v dest_v tracks =
   map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
   where
@@ -613,7 +665,6 @@ dijkstra graph src =
           where
             nc = min (dist pc) (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
 
-
 makeTrackEdge [] = []
 makeTrackEdge [x] = []
 makeTrackEdge (fstel:secel:avail_exp_track) = 
@@ -622,6 +673,30 @@ makeTrackEdge (fstel:secel:avail_exp_track) =
          change_weigth = 0, 
          time_weigth = (diffUTCTimeInSecs (arrival secel) (departure fstel))
          }):makeTrackEdge(secel:avail_exp_track)
+
+---------------------------------------
+-- 4 Wygenerowanie rozkładu jazdy            
+---------------------------------------
+
+generateSchedule stns trs = do
+  putStrLn "Wygenerowanie rozkładu jazdy"
+  mapM_  (putStrLn . show) (stations stns)
+  putStr "podaj id stacji: "
+  stnid <- getLine
+  if stnid == [] || checkDigits stnid == False
+  then do
+    putStrLn notFounIdxError
+  else do
+    let numid =  read stnid :: Int
+    case (find (\v -> (station_id v == numid)) (stations stns)) of
+      Nothing -> do 
+        putStrLn notFounIdxError
+      Just found -> do 
+        let x = generateTimetable numid (tracks trs)
+        --let x = sortTimeTable x
+        print x
+  where
+  notFounIdxError = "Nie ma takiego indeksu"
 
 
 genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
@@ -640,11 +715,4 @@ generateTimetable stn (fst:tracks) =
 
 sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
 sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
-
----------------------------------------
--- 4 Wygenerowanie rozkładu jazdy            
----------------------------------------
---generateSchedule stns trs 
-
-
 
