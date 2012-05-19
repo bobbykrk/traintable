@@ -24,6 +24,7 @@ type Duration = Int
 type Weigth = Int
 type NodeId = Int
 
+
 data Cost = Finite (Weigth, Weigth) | Infty deriving (Eq, Ord, Show) 
 
 data WeekDay = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving (Enum, Show)
@@ -49,7 +50,7 @@ data Track = Track {
   track_name :: String,
   track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
   track_stations :: [TrackStation]
-} deriving (Show) --trzeba zakomentować
+} --deriving (Show) --trzeba zakomentować
 
 data Tracks = Tracks {
   track_counter :: Int,
@@ -80,9 +81,14 @@ data ExpandedTrackStation = ExpandedTrackStation {
 instance Show Station where
   show stn = printf "id: %d nazwa: %s" (station_id stn) (station_name stn)
   
---instance Show Track where
---  show tr = printf "id: %d nazwa: %s" (track_id tr) (track_name tr)
+instance Show Track where
+  show tr = printf "id: %d nazwa: %s" (track_id tr) (track_name tr)
 
+--  track_id :: TrackId,
+--  track_name :: String,
+--  track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
+--  track_stations :: [TrackStation]
+  
 instance Eq Edge where
   (==) = edgeEq
 
@@ -116,8 +122,9 @@ mainMenu stns trs = do
       trs' <- tracksEdit stns trs
       mainMenu stns trs'
     "3" -> do
-      putStrLn "Wyznaczenie trasy - BRAK"
-      getRoute stns trs
+      putStrLn "Wyznaczenie trasy"
+      res <- getRoute stns trs
+      print res
       mainMenu stns trs
     "4" -> do
       putStrLn "Wygenerowanie rozkładu jazdy"
@@ -180,6 +187,7 @@ addStation stns = do
   stn <- getLine
   let stns' = Stations {station_counter = (station_counter stns + 1), 
   stations = (stations stns) ++ [Station {station_name = stn, station_id = (station_counter stns + 1)}]}
+  putStrLn "została dodana nowa stacja"
   return stns'
 
 --zmienia nazwę stacji  
@@ -201,7 +209,7 @@ editStation stns = do
         putStr "podaj nową nazwę stacji: "
         newname <- getLine
         let stns' = Stations { stations = ((filter (\x -> ((station_id x) /= numid)) (stations stns)) ++ [Station {station_name = newname, station_id = (station_id found) }]), station_counter = (station_counter stns)}
-        putStrLn "jest"
+        putStrLn "nazwa została zmieniona"
         return stns'
   where
   notFounIdxError = "Nie ma takiego indeksu"
@@ -225,7 +233,7 @@ deleteStation stns = do
       Just found -> do 
         let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)}
   --      let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)-1}
-        putStrLn "usunięte"
+        putStrLn "stacja została usunięta"
         return stns'
   where
   notFounIdxError = "Nie ma takiego indeksu"
@@ -381,6 +389,7 @@ reNameTrack trs = do
             putStr "podaj nową nazwę kursu: "
             newname <- getLine
             let trs' = Tracks { tracks = ((filter (\x -> ((track_id x) /= numid)) (tracks trs)) ++ [Track {track_name = newname, track_id = (track_id found), track_starts = (track_starts found), track_stations = (track_stations found) }]), track_counter = (track_counter trs)}
+            putStrLn "nazwa została zmieniona"
             return trs'
   where
   notFounIdxError = "Nie ma takiego indeksu"     
@@ -410,6 +419,7 @@ reDateTrack trs = do
               return trs 
             else do
               let trs' = Tracks { tracks = ((filter (\x -> ((track_id x) /= numid)) (tracks trs)) ++ [Track {track_name = (track_name found), track_id = (track_id found), track_starts = dates, track_stations = (track_stations found) }]), track_counter = (track_counter trs)}
+              putStrLn "daty zostały zmienione"
               return trs'
   where
   notFounIdxError = "Nie ma takiego indeksu"   
@@ -439,6 +449,7 @@ reStationsTrack stns trs = do
               return trs 
             else do
               let trs' = Tracks { tracks = ((filter (\x -> ((track_id x) /= numid)) (tracks trs)) ++ [Track {track_name = (track_name found), track_id = (track_id found), track_starts = (track_starts found), track_stations = new_stations }]), track_counter = (track_counter trs)}
+              putStrLn "nowa trasa kursu została wprowadzona"
               return trs'
   where
   notFounIdxError = "Nie ma takiego indeksu"   
@@ -517,9 +528,9 @@ addDate2 = do
 --tracks  [Track]
 
 getRoute stns trs = do
+  day <- addDate2
   putStr "Lista stacji:"
   mapM_  (putStrLn . show) (stations stns)
-  day <- addDate2
   putStr "podaj id pierwszej stacji: "
   src_v <- getLine
   let src_v' =  read src_v :: Int
@@ -606,7 +617,7 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   -- wszystkie kursy, które mają szanse być w grafie
 --  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
 
---algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[a]]
+algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[ExpandedTrackStation]]
 algorithm day max_p src_v dest_v tracks =
   map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
   where
@@ -727,8 +738,12 @@ generateSchedule stns trs = do
         putStrLn notFounIdxError
       Just found -> do 
         let x = generateTimetable numid (tracks trs)
-        --let x = sortTimeTable x
-        print x
+        let x' = sortTimeTable x
+        --print x'
+        --show stn = printf "id: %d nazwa: %s" (station_id stn) (station_name stn)
+        mapM_  (putStrLn . show) x'
+        --putStrLn "----"
+       -- printf "%d %s %s" x'
   where
   notFounIdxError = "Nie ma takiego indeksu"
 
@@ -736,8 +751,9 @@ generateSchedule stns trs = do
 genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
 genTrackTimetable _ [] = []
 genTrackTimetable stn (fst:exp_tracks) =
-  case find (\v -> (trck_id v) == stn) fst of
+  case find (\v -> (st_id v) == stn) fst of
     Nothing -> genTrackTimetable stn exp_tracks
+    --Just v -> (trck_id v, arrival v, departure v):(genTrackTimetable stn exp_tracks)
     Just v -> (trck_id v, arrival v, departure v):(genTrackTimetable stn exp_tracks)
 
 generateTimetable :: StationId -> [Track] -> [(TrackId, Time, Time)]
