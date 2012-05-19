@@ -1,0 +1,50 @@
+﻿przy usuwaniu stacji, usunąć wszystkie powiązane kursy??
+
+let Just x0 = parseTime defaultTimeLocale "%F %R" "2011-11-11 00:10" :: Maybe UTCTime; 
+let Just x1 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:00" :: Maybe UTCTime; 
+let Just x2 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:10" :: Maybe UTCTime;
+let Just x3 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:20" :: Maybe UTCTime;
+let Just x4 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:30" :: Maybe UTCTime;
+let Just x5 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:40" :: Maybe UTCTime;
+let Just x6 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:50" :: Maybe UTCTime;
+let Just x7 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:00" :: Maybe UTCTime;
+let Just x8 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:10" :: Maybe UTCTime;
+let Just x9 = parseTime defaultTimeLocale "%F %R" "2011-11-12 13:20" :: Maybe UTCTime;
+let Just x10 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:30" :: Maybe UTCTime
+
+let stata = TrackStation {stn_id = 1, stop_time = 10, travel_time = 14}
+let statb = TrackStation {stn_id = 2, stop_time = 4, travel_time = 31}
+let trk = [Track {track_id = 1, track_name = "asd", track_starts = [x1,x2], track_stations = [stata, statb] },Track {track_id = 2, track_name = "asd", track_starts = [x3,x4], track_stations = [stata,statb] },Track {track_id = 3, track_name = "asduy", track_starts = [x6,x7], track_stations = [stata,statb] }]
+let trk = [Track {track_id = 1, track_name = "asd", track_starts = [x1], track_stations = [stata, statb] }]
+let trk2 = [Track {track_id = 1, track_name = "asd", track_starts = [x1,x2], track_stations = [stata, statb] }]
+
+let res=generateTimetable num1 trk
+
+let num0 = 0 :: Int
+let num1 = 1 :: Int
+let num2 = 2 :: Int
+algorithm x0 num0 num1 num2 trk2
+
+getPathNodes 0 1 [PathCost {prev_node = 1, nod_id = 0, dist = Infty},PathCost {prev_node = 0, nod_id = 1, dist = Finite (0,840)}]
+
+algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[ExpandedTrackStation]]
+algorithm day max_p src_v dest_v tracks = 
+
+let statc = TrackStation {stn_id = 1, stop_time = 10}
+
+let Just x1 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:00" :: Maybe UTCTime; 
+let Just x2 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:10" :: Maybe UTCTime;
+let Just x3 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:20" :: Maybe UTCTime;
+let Just x4 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:30" :: Maybe UTCTime;
+let Just x5 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:40" :: Maybe UTCTime;
+let Just x6 = parseTime defaultTimeLocale "%F %R" "2011-11-11 12:50" :: Maybe UTCTime;
+let Just x7 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:00" :: Maybe UTCTime;
+let Just x8 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:10" :: Maybe UTCTime;
+let Just x9 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:20" :: Maybe UTCTime;
+let Just x10 = parseTime defaultTimeLocale "%F %R" "2011-11-11 13:30" :: Maybe UTCTime;
+let stata = ExpandedTrackStation {trck_id = 1, st_id = 1, arrival = x1, departure = x2, node_id = 0};
+let statb = ExpandedTrackStation {trck_id = 1, st_id = 2, arrival = x3, departure = x4, node_id = 1};
+let statc = ExpandedTrackStation {trck_id = 2, st_id = 1, arrival = x1, departure = x3, node_id = 2};
+let statd = ExpandedTrackStation {trck_id = 2, st_id = 2, arrival = x3, departure = x5, node_id = 3};
+let state = ExpandedTrackStation {trck_id = 2, st_id = 3, arrival = x6, departure = x7, node_id = 4}
+makeEdges [[stata, statb, statc],[statd, state]]
