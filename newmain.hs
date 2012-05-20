@@ -661,13 +661,23 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   graph = makeEdges avail_exp_tracks
   paths = dijkstra graph (node_id source_exp_track)
   pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
+
+totalPathCost :: [ExpandedTrackStation] -> Cost
+totalPathCost [lst] = Finite(0,-(diffUTCTimeInSecs (departure lst) (arrival lst)))
+totalPathCost (x:y:rest) = 
+  sumCosts (Finite(cng, dst)) (totalPathCost (y:rest))
+  where
+    dst = diffUTCTimeInSecs (departure y) (departure x)
+    cng = if (st_id x) == (st_id y) then 1 else 0
+
+sortPaths :: [[ExpandedTrackStation]] -> [[ExpandedTrackStation]]
+sortPaths paths = sortBy (\x y -> compare (totalPathCost x) (totalPathCost y) ) paths
   
 buildPaths [] _ = []
 buildPaths (x:xs) flat_avail_exp_tracks = 
   case x of
     Nothing -> buildPaths xs flat_avail_exp_tracks 
-    Just pth -> (buildPath pth flat_avail_exp_tracks ):(buildPaths xs flat_avail_exp_tracks )
-  
+    Just pth -> (buildPath pth flat_avail_exp_tracks ):(buildPaths xs flat_avail_exp_tracks )  
   
 makeEdges :: [[ExpandedTrackStation]] -> [Edge]
 makeEdges avail_exp_tracks = 
