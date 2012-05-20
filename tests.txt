@@ -39,3 +39,5 @@ makeEdges [[stata, statb, statc],[statd, state]]
 dijkstra [Edge {src_node = 1, dest_node = 2, change_weigth = 1, time_weigth = 0},Edge {src_node = 2, dest_node = 3, change_weigth = 1, time_weigth = 0},Edge {src_node = 2, dest_node = 3, change_weigth = 1, time_weigth = 0}] 1
 
 getPathNodes 1 4 [PathCost {prev_node = 4, nod_id = 1, dist = Infty},PathCost {prev_node = 3, nod_id = 4, dist = Finite (7,0)},PathCost {prev_node = 2, nod_id = 3, dist = Finite (3,0)},PathCost {prev_node = 1, nod_id = 2, dist = Finite (1,0)}]
+
+sortTimeTable [(1,x1,x2), (2,x3,x5),(3,x1,x6)]

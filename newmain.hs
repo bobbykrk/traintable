@@ -622,7 +622,7 @@ algorithm day max_p src_v dest_v tracks =
   map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
   --map (trace (show exp_track_stns ) (algorithm_inst exp_track_stns dest_v max_p)) source_exp_track_stations
   where
-  exp_track_stns = foldl (++) [] (map expandTrack tracks)
+  exp_track_stns = assignIdsToAll (foldl (++) [] (map expandTrack tracks)) 0
   flat_exp_tracks_stns = foldl (++) [] exp_track_stns
   --flat_exp_tracks_stns = map (\[v] -> v) exp_track_stns
   source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
@@ -659,7 +659,7 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
     --Just pth -> buildPath pth flat_avail_exp_tracks
 --    Just pth -> trace ((show pth)++(show flat_avail_exp_tracks)) (buildPath pth flat_avail_exp_tracks)
   where
-  avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
+  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks
   flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
   --dest_v' = trace (show flat_avail_exp_tracks) (map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks)))
   dest_v' = map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks))
