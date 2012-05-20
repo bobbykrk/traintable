@@ -540,7 +540,10 @@ getRoute stns trs = do
   putStr "podaj max liczbę przesiadek: "
   max_p <- getLine
   let max_p' =  read max_p :: Int
-  let res = algorithm day max_p' src_v' dest_v' (tracks trs)
+  let paths = algorithm day max_p' src_v' dest_v' (tracks trs)
+  print paths
+  let paths' = foldl (++) [] paths
+  let res = sortPaths paths'
   return res
   --print res
   
@@ -617,7 +620,7 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   -- wszystkie kursy, które mają szanse być w grafie
 --  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
 
---algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[ExpandedTrackStation]]
+algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[[ExpandedTrackStation]]]
 algorithm day max_p src_v dest_v tracks =
   (map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations)
   where
@@ -660,7 +663,8 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   dest_v' = map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks))
   graph = makeEdges avail_exp_tracks
   paths = dijkstra graph (node_id source_exp_track)
-  pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
+  --pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
+  pathNodes = [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
 
 totalPathCost :: [ExpandedTrackStation] -> Cost
 totalPathCost [lst] = Finite(0,-(diffUTCTimeInSecs (departure lst) (arrival lst)))
