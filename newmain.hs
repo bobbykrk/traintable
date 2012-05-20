@@ -619,7 +619,8 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
 
 --algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[ExpandedTrackStation]]
 algorithm day max_p src_v dest_v tracks =
-  map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations
+  --trace (show source_exp_track_stations) 
+  (map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations)
   --map (trace (show exp_track_stns ) (algorithm_inst exp_track_stns dest_v max_p)) source_exp_track_stations
   where
   exp_track_stns = assignIdsToAll (foldl (++) [] (map expandTrack tracks)) 0
@@ -639,9 +640,17 @@ getPathNodes src_nd dst_nd paths =
           if dist n == Infty 
             then Nothing
             else
-              Just (rest ++ [(nod_id n)])
+              case rest of
+                Nothing -> Just [(nod_id n)]              
+                Just p -> Just(p ++ [(nod_id n)])
               where
-                Just rest = (getPathNodes src_nd (prev_node n) paths)
+                rest = (getPathNodes src_nd (prev_node n) paths)
+              --Just (rest ++ [(nod_id n)])
+              --where
+                --Just rest = (getPathNodes src_nd (prev_node n) paths)
+                --case (getPathNodes src_nd (prev_node n) paths) of
+                  --Nothing ->
+                  --Just n ->
       where
         v = find (\u -> (nod_id u) == dst_nd) paths
 
@@ -653,6 +662,7 @@ buildPath paths exp_tracks =
 
 
 algorithm_inst exp_tracks dest_v max_p source_exp_track = 
+  --trace (show pathNodes) 
   buildPaths pathNodes flat_avail_exp_tracks
 --    case trace (show pathNodes) pathNodes of
 --    Nothing -> []
@@ -666,10 +676,13 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   graph = makeEdges avail_exp_tracks
   --paths = dijkstra graph (node_id source_exp_track)
   --paths = trace (show graph) (dijkstra graph (node_id source_exp_track))
+
   paths = trace (show graph ++ show dest_v')  (map (\v -> dijkstra graph v) dest_v')
+
   --pathNodes = getPathNodes (node_id source_exp_track) dest_v' paths
   --pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) (getPathNodes (node_id source_exp_track) dest_v' paths)
-  pathNodes = map (\v -> getPathNodes (node_id source_exp_track) dest_v v) paths
+--  pathNodes = map (\v -> getPathNodes (node_id source_exp_track) dest_v' v) paths
+  pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) [getPathNodes (node_id source_exp_track) d_v v | d_v <- dest_v', v <- paths]
   
 buildPaths [] _ = []
 buildPaths (x:xs) flat_avail_exp_tracks = 
