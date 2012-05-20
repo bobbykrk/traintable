@@ -619,13 +619,10 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
 
 --algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[ExpandedTrackStation]]
 algorithm day max_p src_v dest_v tracks =
-  --trace (show source_exp_track_stations) 
   (map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations)
-  --map (trace (show exp_track_stns ) (algorithm_inst exp_track_stns dest_v max_p)) source_exp_track_stations
   where
   exp_track_stns = assignIdsToAll (foldl (++) [] (map expandTrack tracks)) 0
   flat_exp_tracks_stns = foldl (++) [] exp_track_stns
-  --flat_exp_tracks_stns = map (\[v] -> v) exp_track_stns
   source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
 
 getPathNodes :: NodeId -> NodeId -> [PathCost] -> Maybe [NodeId]
@@ -645,12 +642,6 @@ getPathNodes src_nd dst_nd paths =
                 Just p -> Just(p ++ [(nod_id n)])
               where
                 rest = (getPathNodes src_nd (prev_node n) paths)
-              --Just (rest ++ [(nod_id n)])
-              --where
-                --Just rest = (getPathNodes src_nd (prev_node n) paths)
-                --case (getPathNodes src_nd (prev_node n) paths) of
-                  --Nothing ->
-                  --Just n ->
       where
         v = find (\u -> (nod_id u) == dst_nd) paths
 
@@ -662,32 +653,14 @@ buildPath paths exp_tracks =
 
 
 algorithm_inst exp_tracks dest_v max_p source_exp_track = 
-  --trace (show pathNodes) 
   buildPaths pathNodes flat_avail_exp_tracks
---    case trace (show pathNodes) pathNodes of
---    Nothing -> []
-    --Just pth -> buildPath pth flat_avail_exp_tracks
---    Just pth -> trace ((show pth)++(show flat_avail_exp_tracks)) (buildPath pth flat_avail_exp_tracks)
   where
   avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks
   flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
-  --dest_v' = trace (show flat_avail_exp_tracks) (map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks)))
   dest_v' = map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks))
   graph = makeEdges avail_exp_tracks
-  --paths = dijkstra graph (node_id source_exp_track)
-  --paths = trace (show graph) (dijkstra graph (node_id source_exp_track))
-<<<<<<< HEAD
-  --paths = trace (show dest_v' ++ show graph) 
-  paths = trace (show graph) map (\v -> dijkstra graph v) dest_v'
-=======
-
-  paths = trace (show graph ++ show dest_v')  (map (\v -> dijkstra graph v) dest_v')
-
->>>>>>> bdea1f9097b11bf756ca8b0f2671c9a665333ef7
-  --pathNodes = getPathNodes (node_id source_exp_track) dest_v' paths
-  --pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) (getPathNodes (node_id source_exp_track) dest_v' paths)
---  pathNodes = map (\v -> getPathNodes (node_id source_exp_track) dest_v' v) paths
-  pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) [getPathNodes (node_id source_exp_track) d_v v | d_v <- dest_v', v <- paths]
+  paths = dijkstra graph (node_id source_exp_track)
+  pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
   
 buildPaths [] _ = []
 buildPaths (x:xs) flat_avail_exp_tracks = 
@@ -696,15 +669,8 @@ buildPaths (x:xs) flat_avail_exp_tracks =
     Just pth -> (buildPath pth flat_avail_exp_tracks ):(buildPaths xs flat_avail_exp_tracks )
   
   
---algfun [x:xs] = 
-  --case trace (show pathNodes) pathNodes of
-    --Nothing -> [] ++
-    --Just pth -> buildPath pth flat_avail_exp_tracks
-    --Just pth -> trace ((show pth)++(show flat_avail_exp_tracks)) (buildPath pth flat_avail_exp_tracks)
-  
 makeEdges :: [[ExpandedTrackStation]] -> [Edge]
 makeEdges avail_exp_tracks = 
---  trace (show stns)
   track_edges ++ station_edges
   where
     flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
@@ -743,9 +709,9 @@ dijkstra graph src =
     addPaths :: [PathCost] -> [PathCost] -> [PathCost]
     addPaths [] ac = ac
     addPaths ps ac =
-      trace (show ps) (addPaths (map relax (remove minp ps)) (minp : ac))
+      addPaths (map relax (remove minp ps)) (minp : ac)
       where
-        minp = trace (show (minimum ps)) (minimum ps)
+        minp = minimum ps
         relax pc = if (dist pc) <= nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
           where
             nc = (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
