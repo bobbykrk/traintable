@@ -659,14 +659,14 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
     --Just pth -> buildPath pth flat_avail_exp_tracks
 --    Just pth -> trace ((show pth)++(show flat_avail_exp_tracks)) (buildPath pth flat_avail_exp_tracks)
   where
-  avail_exp_tracks = assignIdsToAll (filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks) 0
+  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks
   flat_avail_exp_tracks = foldl (++) [] avail_exp_tracks
   --dest_v' = trace (show flat_avail_exp_tracks) (map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks)))
   dest_v' = map node_id ( (filter (\v -> (st_id v) == dest_v) flat_avail_exp_tracks))
   graph = makeEdges avail_exp_tracks
   --paths = dijkstra graph (node_id source_exp_track)
   --paths = trace (show graph) (dijkstra graph (node_id source_exp_track))
-  paths = map (\v -> dijkstra graph v) dest_v'
+  paths = trace (show graph)  (map (\v -> dijkstra graph v) dest_v')
   --pathNodes = getPathNodes (node_id source_exp_track) dest_v' paths
   --pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) (getPathNodes (node_id source_exp_track) dest_v' paths)
   pathNodes = map (\v -> getPathNodes (node_id source_exp_track) dest_v v) paths
