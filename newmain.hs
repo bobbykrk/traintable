@@ -676,8 +676,14 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   graph = makeEdges avail_exp_tracks
   --paths = dijkstra graph (node_id source_exp_track)
   --paths = trace (show graph) (dijkstra graph (node_id source_exp_track))
+<<<<<<< HEAD
   --paths = trace (show dest_v' ++ show graph) 
   paths = trace (show graph) map (\v -> dijkstra graph v) dest_v'
+=======
+
+  paths = trace (show graph ++ show dest_v')  (map (\v -> dijkstra graph v) dest_v')
+
+>>>>>>> bdea1f9097b11bf756ca8b0f2671c9a665333ef7
   --pathNodes = getPathNodes (node_id source_exp_track) dest_v' paths
   --pathNodes = trace ((show paths)++(show(node_id source_exp_track))++(show dest_v')) (getPathNodes (node_id source_exp_track) dest_v' paths)
 --  pathNodes = map (\v -> getPathNodes (node_id source_exp_track) dest_v' v) paths
@@ -737,12 +743,12 @@ dijkstra graph src =
     addPaths :: [PathCost] -> [PathCost] -> [PathCost]
     addPaths [] ac = ac
     addPaths ps ac =
-      addPaths (map relax (remove minp ps)) (minp : ac)
+      trace (show ps) (addPaths (map relax (remove minp ps)) (minp : ac))
       where
-        minp = minimum ps
-        relax pc = if (dist pc) < nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
+        minp = trace (show (minimum ps)) (minimum ps)
+        relax pc = if (dist pc) <= nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
           where
-            nc = min (dist pc) (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
+            nc = (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
 
 makeTrackEdge [] = []
 makeTrackEdge [x] = []
