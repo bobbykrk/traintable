@@ -738,12 +738,12 @@ dijkstra graph src =
     addPaths :: [PathCost] -> [PathCost] -> [PathCost]
     addPaths [] ac = ac
     addPaths ps ac =
-      addPaths (map relax (remove minp ps)) (minp : ac)
+      trace (show ps) (addPaths (map relax (remove minp ps)) (minp : ac))
       where
-        minp = minimum ps
-        relax pc = if (dist pc) < nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
+        minp = trace (show (minimum ps)) (minimum ps)
+        relax pc = if (dist pc) <= nc then pc else (PathCost {prev_node = (nod_id minp), nod_id = (nod_id pc), dist = nc})
           where
-            nc = min (dist pc) (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
+            nc = (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
 
 makeTrackEdge [] = []
 makeTrackEdge [x] = []
