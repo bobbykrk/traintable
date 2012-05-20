@@ -649,7 +649,8 @@ getPathNodes src_nd dst_nd paths =
 
 buildPath ::  [NodeId] -> [ExpandedTrackStation] -> [ExpandedTrackStation]
 buildPath paths exp_tracks = 
-  filter (\track -> (any (\v -> v == (node_id track)) paths)) exp_tracks
+  foldl (++) [] (map (\nid -> filter (\el -> (node_id el) == nid) exp_tracks) paths)
+--  filter (\track -> (any (\v -> v == (node_id track)) paths)) exp_tracks
 
 
 algorithm_inst exp_tracks dest_v max_p source_exp_track = 

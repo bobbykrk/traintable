@@ -30,6 +30,13 @@ statb = ExpandedTrackStation {trck_id = 1, st_id = 2, arrival = x3, departure = 
 statc = ExpandedTrackStation {trck_id = 2, st_id = 1, arrival = x1, departure = x3, node_id = 2};
 statd = ExpandedTrackStation {trck_id = 2, st_id = 2, arrival = x3, departure = x5, node_id = 3};
 state = ExpandedTrackStation {trck_id = 2, st_id = 3, arrival = x6, departure = x7, node_id = 4}
+
+let stat1 = ExpandedTrackStation {trck_id = 1, st_id = 1, arrival = x1, departure = x2, node_id = 1};
+stat2 = ExpandedTrackStation {trck_id = 1, st_id = 2, arrival = x3, departure = x4, node_id = 2};
+stat3 = ExpandedTrackStation {trck_id = 2, st_id = 1, arrival = x5, departure = x6, node_id = 3};
+stat4 = ExpandedTrackStation {trck_id = 2, st_id = 2, arrival = x7, departure = x8, node_id = 4};
+stat5 = ExpandedTrackStation {trck_id = 2, st_id = 3, arrival = x9, departure = x10, node_id = 5};
+
 makeEdges [[stata, statb, statc],[statd, state]]
 
 
@@ -41,3 +48,6 @@ dijkstra [Edge {src_node = 1, dest_node = 2, change_weigth = 1, time_weigth = 0}
 getPathNodes 1 4 [PathCost {prev_node = 4, nod_id = 1, dist = Infty},PathCost {prev_node = 3, nod_id = 4, dist = Finite (7,0)},PathCost {prev_node = 2, nod_id = 3, dist = Finite (3,0)},PathCost {prev_node = 1, nod_id = 2, dist = Finite (1,0)}]
 
 sortTimeTable [(1,x1,x2), (2,x3,x5),(3,x1,x6)]
+
+
+[Edge {src_node = 0, dest_node = 1, change_weigth = 0, time_weigth = 840},Edge {src_node = 2, dest_node = 3, change_weigth = 0, time_weigth = 840},Edge{src_node = 0, dest_node = 2, change_weigth = 1, time_weigth = 1200},Edge {src_node = 1, dest_node = 3, change_weigth = 1, time_weigth = 840}]
