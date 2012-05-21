@@ -541,7 +541,7 @@ checkDigits (x:xs) = if isDigit x then
       
 --wczytuje datę wraz z godziną i minutami      
 addDate dates =  do
-  putStrLn "Podaj datę w formacie: rrrr-mm-dd hh:mm"
+  putStrLn "Podaj datę kursu w formacie: rrrr-mm-dd hh:mm"
   x <- getLine
   let Just x' = parseTime defaultTimeLocale "%F %R" x :: Maybe UTCTime;
   res <- C.try(print x')::IO (Either C.SomeException ())
@@ -563,7 +563,7 @@ addDate dates =  do
                 \0 - aby zakończyć wpisywanie dat"   
 
 addDate2 = do                
-  putStrLn "Podaj datę w formacie: rrrr-mm-dd"
+  putStrLn "Podaj datę podróży w formacie: rrrr-mm-dd"
   x <- getLine
   let Just x' = parseTime defaultTimeLocale "%F" x :: Maybe UTCTime;
   res <- C.try(print x')::IO (Either C.SomeException ())
@@ -580,21 +580,37 @@ printRoute stns trs = do
   res <- getRoute stns trs
   let ans = findChange res 0 []
   putStrLn"Proponowana trasa:"
-  putStrLn" PRZYJAZD :: ODJAZD :: ID STACJI :: ID KURSU"
-  printRouteLoop res ans 0
+  putStrLn" PRZYJAZD :: ODJAZD :: ID STACJI :: NAZWA STACJI :: ID KURSU :: NAZWA KURSU "
+  printRouteLoop stns trs res ans 0
 
-printRouteLoop [] _ _ = putStrLn "Nie istnieje takie połączenie"
-printRouteLoop route [] c = mapM_ (putStrLn . show) route
-printRouteLoop (x:route) (y:change) c = do
+printRouteLoop _ _ [] _ _ = putStrLn "Nie istnieje takie połączenie"
+printRouteLoop stns trs route [] c = do
+--mapM_ (putStrLn . show) route
+  let Just nameS = getStationName 1 stns
+  let Just nameT = getTrackName 1 trs
+  let x = head route
+  let z= show (arrival x) ++ printf" :: " ++ show(departure x) ++ printf" :: " ++ show(st_id x) ++ printf" :: %s :: " nameS ++ show(trck_id x) ++ printf" :: %s" nameT
+  print z
+  printRouteLoop stns trs (tail route) [] c
+    
+printRouteLoop stns trs (x:route) (y:change) c = do
+  let Just nameS = getStationName 1 stns
+  let Just nameT = getTrackName 1 trs
+  --print nameS
+ -- print nameT
+--show tr = show (arrival tr) ++ printf" :: " ++ show(departure tr) ++ printf" :: " ++ show(st_id tr) ++ printf" :: " ++ show(trck_id tr)
   let c'=c+1
   if y==c 
   then do
     putStrLn"PRZESIADKA"
-    print x
-    printRouteLoop route change c'
+    --print x
+    let z= show (arrival x) ++ printf" :: " ++ show(departure x) ++ printf" :: " ++ show(st_id x) ++ printf" :: %s :: " nameS ++ show(trck_id x) ++ printf" :: %s" nameT
+    print z
+    printRouteLoop stns trs route change c'
   else do
-    print x
-    printRouteLoop route (y:change) c'
+    let z= show (arrival x) ++ printf" :: " ++ show(departure x) ++ printf" :: " ++ show(st_id x) ++ printf" :: %s :: " nameS ++ show(trck_id x) ++ printf" :: %s" nameT
+    print z
+    printRouteLoop stns trs route (y:change) c'
   
 findChange :: [ExpandedTrackStation] -> Int -> [Int] -> [Int]
 findChange [lst] c ans = ans
