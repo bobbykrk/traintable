@@ -243,10 +243,10 @@ deleteStation stns trs= do
         return (stns)
       Just found -> do 
         let numid' = numid :: StationId
-        if False --foldl (&&) True (map (\track_station -> any (\el -> stn_id == 1) track_station) (track_stations tracks trs))
+        if checkStationExist numid trs
         then do 
-          putStrLn "NIE!!"
-          return stns
+          putStrLn "Stacja nie może zostać usunięta ponieważ posiada powiązane ze sobą kursy!"
+          return stns          
         else do
           let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)}
           putStrLn "stacja została usunięta"
@@ -254,6 +254,12 @@ deleteStation stns trs= do
   where
   notFounIdxError = "Nie ma takiego indeksu"
 
+checkStationExist :: StationId -> Tracks -> Bool
+checkStationExist id trcks = 
+  foldl (&&) True (map (\trck -> any (\el -> stn_id el == id) (track_stations trck)) tcks)
+  where
+    tcks = tracks trcks
+  
 ---------------------------------------
 -- 2 Edycja kursów            
 ---------------------------------------
@@ -381,18 +387,19 @@ showStations stns trs = do
       Just found -> do 
         putStrLn "Stacje wskazanego kursu: "
         let track = (filter (\x -> ((track_id x) == numid)) (tracks trs))
-        --let stations = track_stations (head track)
-        mapM_ (putStrLn . show) (track_stations (head track))
-        --let trs' = Tracks { tracks = ((filter (\x -> ((track_id x) /= numid)) (tracks trs)) ++ [Track {track_name = newname, track_id = (track_id found), track_starts = (track_starts found), track_stations = (track_stations found) }]), track_counter = (track_counter trs)}
-        --putStrLn "nazwa została zmieniona"
+        --mapM_ (putStrLn . show) (track_stations (head track))
+        let trstn = (track_stations (head track))
+        putStrLn "ID STACJI :: NAZWA STACJI :: CZAS POSTOJU :: CZAS DOJAZDU DO KOLEJNEJ"
+        mapM_ (printTrackStations stns)  trstn
   where
   notFounIdxError = "Nie ma takiego indeksu"  
-  --TrackStation {stn_id = 1, stop_time = 23, travel_time = 20}
-  --(find (\v -> (station_id v == numid)) (stations stns))
-  
---printOneStation  
-  
-  
+
+printTrackStations stns tr = do
+  ---putStrLn "asd"
+  let id = (stn_id tr)
+  let Just name = getStationName id stns
+  printf"%d     :: %s     :: %dmin     :: %dmin\n" (stn_id tr) name (stop_time tr) (travel_time tr)
+
 --pozwala modyfikować wskazany kurs
 editTrack stns trs = do
   putStrLn editTrackHelp
@@ -622,12 +629,6 @@ getRoute stns trs = do
     let res' = head res
     return res'
 
-checkStationExist :: StationId -> Tracks -> Bool
-checkStationExist id trcks = 
-  foldl (&&) True (map (\trck -> any (\el -> stn_id el == id) (track_stations trck)) tcks)
-  where
-    tcks = tracks trcks
-
 -- sprawdza czy węzły grafu są takie same
 edgeEq :: Edge -> Edge -> Bool
 edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
@@ -856,8 +857,8 @@ generateSchedule stns trs = do
   where
   notFounIdxError = "Nie ma takiego indeksu"
   printSched trs (a,b,c) = do
-    let name = getTrackName a trs
-    printf"%d :: " a ++ show name ++ printf" :: " ++ show b ++ printf" :: " ++ show c
+    let Just name = getTrackName a trs
+    printf"%d :: " a ++ printf"%s :: " name ++ show b ++ printf" :: " ++ show c
 
 genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
 genTrackTimetable _ [] = []
