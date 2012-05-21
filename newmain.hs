@@ -1,3 +1,6 @@
+-- Program autorstwa: 
+-- Marcin Gecow & Robert Krajerwski
+--
 -- Algorytm Dijkstra wg pomysłu: http://pastebin.com/V9VMUfs3
 
 import Control.Monad
@@ -24,10 +27,7 @@ type Duration = Int
 type Weigth = Int
 type NodeId = Int
 
-
 data Cost = Finite (Weigth, Weigth) | Infty deriving (Eq, Ord, Show) 
-
-data WeekDay = Mon|Tue|Wed|Thu|Fri|Sat|Sun deriving (Enum, Show)
 
 data Station = Station {
   station_id :: StationId,
@@ -81,19 +81,14 @@ data ExpandedTrackStation = ExpandedTrackStation {
 instance Show Station where
   show stn = printf "id: %d nazwa: %s" (station_id stn) (station_name stn)
   
-  --ID NAZWA DATY WYJAZDU
 instance Show Track where
   show tr = printf "id: %d nazwa: %s odjazdy pociągu: " (track_id tr) (track_name tr) ++ show(track_starts tr)
  
 instance Show TrackStation where
   show tr = printf "Id stacji: %d :: czas postoju: %dmin :: czas dojazdu do kolejnej: %dmin" (stn_id tr) (stop_time tr) (travel_time tr)
   
-  
 instance Show ExpandedTrackStation where
-  show tr = show (arrival tr) ++ printf" :: " ++ show(departure tr) ++ printf" :: " ++ show(st_id tr) ++ printf" :: " ++ show(trck_id tr)
-  --trasa z A do B
-  --arrival departure (nazwa stacji) (nazwa kursu) informacja o przesiadce
-  
+  show tr = show (arrival tr) ++ printf" :: " ++ show(departure tr) ++ printf" :: " ++ show(st_id tr) ++ printf" :: " ++ show(trck_id tr)  
   
 instance Eq Edge where
   (==) = edgeEq
@@ -101,11 +96,12 @@ instance Eq Edge where
 instance Eq PathCost where
   (==) = pathCostEq
 
-
 instance Ord PathCost where
   (<) = pathCostOrd 
   min a b =  if (dist a) < (dist b) then a else b
 
+--funkcja rozruchowa programu
+--w celu uruchomienia należy ją wywołać
 main = do
   putStrLn "Witaj w programie Timetable"
   let stns = (Stations {station_counter = 0, stations = []})
@@ -113,6 +109,7 @@ main = do
   mainMenu stns trs
   return ()
 
+--główne menu programu
 mainMenu stns trs = do
   putStrLn mainHelp
   opt <- getLine
@@ -168,7 +165,7 @@ stationsEdit stns trs = do
       stationsEdit stns' trs
     "4" -> do 
       stns' <- deleteStation stns trs
-      stationsEdit stns' trs -- uwzględnić istniejące kursy!!
+      stationsEdit stns' trs
     "0" -> return stns
     _ -> do
       putStrLn "Nieznana komenda\n"
@@ -243,6 +240,7 @@ deleteStation stns trs= do
   where
   notFounIdxError = "Nie ma takiego indeksu"
 
+--sprawdza czy jakakolwiek trasa korzysta ze wskazanej stacji
 checkStationExist :: StationId -> Tracks -> Bool
 checkStationExist id trcks = 
   foldl (&&) True (map (\trck -> any (\el -> stn_id el == id) (track_stations trck)) tcks)
@@ -254,7 +252,6 @@ checkStationExist id trcks =
 ---------------------------------------
 
 tracksEdit stns trs = do
-  --return trs
   putStrLn tracksHelp
   opt <- getLine
   case opt of
@@ -291,7 +288,6 @@ tracksEdit stns trs = do
 addTrack stns trs = do
   putStrLn "podaj nazwę kursu: "
   new_name <- getLine
-  --print new_name
   --pętla wybierania kolejnych stacji
   let new_stations = []
   new_stations <- addStationsLoop stns new_stations
@@ -310,7 +306,6 @@ addTrack stns trs = do
 
 --tworzenie listy stacji dla kursu
 addStationsLoop stns new_stations = do
---dodać zapytanie o kontynuację
   putStrLn "Lista stacji:"
   mapM_  (putStrLn . show) (stations stns)
   putStrLn "podaj id stacji: "
@@ -373,17 +368,15 @@ showStations stns trs = do
       Just found -> do 
         putStrLn "Stacje wskazanego kursu: "
         let track = (filter (\x -> ((track_id x) == numid)) (tracks trs))
-        --mapM_ (putStrLn . show) (track_stations (head track))
         let trstn = (track_stations (head track))
         putStrLn "ID STACJI :: NAZWA STACJI :: CZAS POSTOJU :: CZAS DOJAZDU DO KOLEJNEJ"
         mapM_ (printTrackStations stns)  trstn
   where
   notFounIdxError = "Nie ma takiego indeksu"  
-
-printTrackStations stns tr = do
-  let id = (stn_id tr)
-  let Just name = getStationName id stns
-  printf"%d     :: %s     :: %dmin     :: %dmin\n" (stn_id tr) name (stop_time tr) (travel_time tr)
+  printTrackStations stns tr = do
+    let id = (stn_id tr)
+    let Just name = getStationName id stns
+    printf"%d     :: %s     :: %dmin     :: %dmin\n" (stn_id tr) name (stop_time tr) (travel_time tr)
 
 --pozwala modyfikować wskazany kurs
 editTrack stns trs = do
@@ -547,6 +540,7 @@ addDate dates =  do
                 \1 - aby wprowadzić kolejną datę\n\  
                 \0 - aby zakończyć wpisywanie dat"   
 
+--wczytuje samą datę
 addDate2 = do                
   putStrLn "Podaj datę podróży w formacie: rrrr-mm-dd"
   x <- getLine
@@ -568,6 +562,7 @@ printRoute stns trs = do
   putStrLn" PRZYJAZD :: ODJAZD :: ID STACJI :: NAZWA STACJI :: ID KURSU :: NAZWA KURSU "
   printRouteLoop stns trs res ans 0
 
+--drukuje pojedynczą stację dla znalezionego połączenia
 printRouteLoop _ _ [] _ _ = putStrLn "Nie istnieje takie połączenie"
 printRouteLoop stns trs route [] c = do
   let Just nameS = getStationName 1 stns
@@ -576,7 +571,6 @@ printRouteLoop stns trs route [] c = do
   let z= show (arrival x) ++ printf" :: " ++ show(departure x) ++ printf" :: " ++ show(st_id x) ++ printf" :: %s :: " nameS ++ show(trck_id x) ++ printf" :: %s" nameT
   print z
   printRouteLoop stns trs (tail route) [] c
-    
 printRouteLoop stns trs (x:route) (y:change) c = do
   let Just nameS = getStationName 1 stns
   let Just nameT = getTrackName 1 trs
@@ -592,6 +586,7 @@ printRouteLoop stns trs (x:route) (y:change) c = do
     print z
     printRouteLoop stns trs route (y:change) c'
   
+--znajduje wszystkie przesiadki
 findChange :: [ExpandedTrackStation] -> Int -> [Int] -> [Int]
 findChange [lst] c ans = ans
 findChange (x:y:rest) c ans = do
@@ -603,6 +598,7 @@ findChange (x:y:rest) c ans = do
   else
     findChange (y:rest) c' ans
 
+--wczytuje parametry podróży
 getRoute stns trs = do
   day <- addDate2
   putStrLn "Lista stacji:"
@@ -629,6 +625,7 @@ getRoute stns trs = do
 edgeEq :: Edge -> Edge -> Bool
 edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
 
+--porównuje koszta tras
 pathCostEq :: PathCost -> PathCost -> Bool
 pathCostEq a b = ((nod_id a) == (nod_id b))
 
@@ -680,7 +677,6 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   today = UTCTime d 0
   tomorrow =  addSecondsToUTCTime (60*60*24) today
 
-
 -- główna funkcja algorytmu do wyszukiwania najkrótszej ścieżki
 -- wykonuje algorytm dla pojedynczych rozkładów stacji
 algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[[ExpandedTrackStation]]]
@@ -727,7 +723,6 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   graph = makeEdges avail_exp_tracks
   paths = dijkstra graph (node_id source_exp_track)
   pathNodes = [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
-
 
 -- wyznacza całkoiwy koszt przejazdu    
 totalPathCost :: [ExpandedTrackStation] -> Cost
@@ -847,6 +842,7 @@ generateSchedule stns trs = do
     let Just name = getTrackName a trs
     printf"%d :: " a ++ printf"%s :: " name ++ show b ++ printf" :: " ++ show c
 
+--tworzy tablicę przyjazdów i odjazdów dla stacji
 genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
 genTrackTimetable _ [] = []
 genTrackTimetable stn (fst:exp_tracks) =
@@ -861,6 +857,7 @@ generateTimetable stn (fst:tracks) =
   where
     exp_tracks = expandTrack fst
 
+--sortuje tablicę przyjazdów i odjazdów wg czasu
 sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
 sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
 
