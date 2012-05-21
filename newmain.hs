@@ -51,7 +51,7 @@ data Track = Track {
   track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
   track_stations :: [TrackStation]
 } --deriving (Show) --trzeba zakomentować
-
+--foldl (&&) True (map (\track -> any ((\el -> stn_id == numid)track_stations) track) (tracks trs))
 data Tracks = Tracks {
   track_counter :: Int,
   tracks :: [Track]
@@ -130,7 +130,7 @@ mainMenu stns trs = do
   case opt of
     "1" -> do
       putStrLn "Edycja stacji"
-      stns' <- stationsEdit stns
+      stns' <- stationsEdit stns trs
       mainMenu stns' trs
     "2" -> do
       putStrLn "Edycja kursów"
@@ -163,27 +163,27 @@ mainMenu stns trs = do
 -- 1 Edycja stacji              
 ---------------------------------------
 
-stationsEdit stns = do
+stationsEdit stns trs = do
   putStrLn stationsHelp
   opt <- getLine
   case opt of
     "1" -> do
       putStrLn "Lista stacji:"
       mapM_  (putStrLn . show) (stations stns)
-      stationsEdit stns
+      stationsEdit stns trs
     "2" -> do
       stns' <- addStation stns
-      stationsEdit stns'
+      stationsEdit stns' trs
     "3" -> do
       stns' <- editStation stns
-      stationsEdit stns'
+      stationsEdit stns' trs
     "4" -> do 
-      stns' <- deleteStation stns
-      stationsEdit stns' -- uwzględnić istniejące kursy!!
+      stns' <- deleteStation stns trs
+      stationsEdit stns' trs -- uwzględnić istniejące kursy!!
     "0" -> return stns
     _ -> do
       putStrLn "Nieznana komenda\n"
-      stationsEdit stns
+      stationsEdit stns trs
   where
   stationsHelp = "naciśnij:\n\
               \1 - aby wypisać stacje\n\  
@@ -226,7 +226,7 @@ editStation stns = do
   notFounIdxError = "Nie ma takiego indeksu"
 
 --usuwa stację
-deleteStation stns = do
+deleteStation stns trs= do
   mapM_  (putStrLn . show) (stations stns)
   return stns
   putStr "podaj id stacji, którą chcesz usunąć: "
@@ -242,9 +242,15 @@ deleteStation stns = do
         putStrLn notFounIdxError
         return (stns)
       Just found -> do 
-        let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)}
-        putStrLn "stacja została usunięta"
-        return stns'
+        let numid' = numid :: StationId
+        if False --foldl (&&) True (map (\track_station -> any (\el -> stn_id == 1) track_station) (track_stations tracks trs))
+        then do 
+          putStrLn "NIE!!"
+          return stns
+        else do
+          let stns' = Stations { stations = (filter (\x -> ((station_id x) /= numid)) (stations stns)), station_counter = (station_counter stns)}
+          putStrLn "stacja została usunięta"
+          return stns'
   where
   notFounIdxError = "Nie ma takiego indeksu"
 
