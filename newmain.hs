@@ -1,5 +1,5 @@
 -- Program autorstwa: 
--- Marcin Gecow & Robert Krajerwski
+-- Marcin Gecow & Robert Krajewski
 --
 -- Algorytm Dijkstra wg pomysłu: http://pastebin.com/V9VMUfs3
 
