@@ -558,12 +558,18 @@ addDate2 = do
 printRoute stns trs = do
   res <- getRoute stns trs
   let ans = findChange res 0 []
-  putStrLn"Proponowana trasa:"
-  putStrLn" PRZYJAZD :: ODJAZD :: ID STACJI :: NAZWA STACJI :: ID KURSU :: NAZWA KURSU "
-  printRouteLoop stns trs res ans 0
+  putStrLn "Podaj max liczbę przesiadek: "
+  max_p <- getLine
+  let max_p' =  read max_p :: Int
+  if (length ans <= max_p') && (res /= [])
+  then do
+    putStrLn"Proponowana trasa:"
+    putStrLn" PRZYJAZD :: ODJAZD :: ID STACJI :: NAZWA STACJI :: ID KURSU :: NAZWA KURSU "
+    printRouteLoop stns trs res ans 0
+  else putStrLn"Nie znaleziono połączenia"
 
 --drukuje pojedynczą stację dla znalezionego połączenia
-printRouteLoop _ _ [] _ _ = putStrLn "Nie istnieje takie połączenie"
+printRouteLoop _ _ [] _ _ = putStrLn ""
 printRouteLoop stns trs route [] c = do
   let Just nameS = getStationName 1 stns
   let Just nameT = getTrackName 1 trs
@@ -609,10 +615,7 @@ getRoute stns trs = do
   putStrLn "Podaj id stacji docelowej: "
   dest_v <- getLine
   let dest_v' =  read dest_v :: Int
-  putStrLn "Podaj max liczbę przesiadek: "
-  max_p <- getLine
-  let max_p' =  read max_p :: Int
-  let paths = algorithm day max_p' src_v' dest_v' (tracks trs)
+  let paths = algorithm day src_v' dest_v' (tracks trs)
   let paths' = foldl (++) [] paths
   let res = sortPaths paths'
   if res == []
@@ -679,9 +682,9 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
 
 -- główna funkcja algorytmu do wyszukiwania najkrótszej ścieżki
 -- wykonuje algorytm dla pojedynczych rozkładów stacji
-algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[[ExpandedTrackStation]]]
-algorithm day max_p src_v dest_v tracks =
-  (map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations)
+algorithm :: Time -> StationId -> StationId -> [Track] -> [[[ExpandedTrackStation]]]
+algorithm day src_v dest_v tracks =
+  (map (algorithm_inst exp_track_stns dest_v) source_exp_track_stations)
   where
   exp_track_stns = assignIdsToAll (foldl (++) [] (map expandTrack tracks)) 0
   flat_exp_tracks_stns = foldl (++) [] exp_track_stns
@@ -714,7 +717,7 @@ buildPath paths exp_tracks =
   foldl (++) [] (map (\nid -> filter (\el -> (node_id el) == nid) exp_tracks) paths)
 
 -- instancja lgorytmu wywoływana dla konkretnego rozkładu stacji
-algorithm_inst exp_tracks dest_v max_p source_exp_track = 
+algorithm_inst exp_tracks dest_v source_exp_track = 
   buildPaths pathNodes flat_avail_exp_tracks
   where
   avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_exp_track)) track)) exp_tracks
