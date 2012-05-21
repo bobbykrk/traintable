@@ -631,8 +631,21 @@ getRoute stns trs = do
 --  where
 --  notFounIdxError = "Nie ma takiego indeksu"
 
+-- pobiera nazwę stacji dla danego id
+getStationName :: StationId -> Stations -> Maybe String
+getStationName id stns = 
+  case find (\el -> (station_id el) == id) (stations stns) of
+  Nothing -> Nothing
+  Just el -> Just (station_name el)
 
+-- pobiera nazwę relacji dla danego id
+getTrackName :: TrackId -> Tracks -> Maybe String
+getTrackName id trcks = 
+  case find (\el -> (track_id el) == id) (tracks trcks) of
+  Nothing -> Nothing
+  Just el -> Just (track_name el)
 
+-- sprawdza czy węzły grafu są takie same
 edgeEq :: Edge -> Edge -> Bool
 edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
 
@@ -644,17 +657,22 @@ pathCostEq a b = ((nod_id a) == (nod_id b))
 --costOrd Infty _ = False
 --costOrd (Finite _) Infty = True
 
+-- ustala porządek w strukturz PathCost
 pathCostOrd :: PathCost -> PathCost -> Bool
 pathCostOrd a b = trace "xxx" ((dist a) < (dist b))
 
+-- sumuje koszty
 sumCosts :: Cost -> Cost -> Cost
 sumCosts (Finite (wpa,wca)) (Finite (wpb,wcb)) = Finite ((wpa+wpb),(wca+wcb))
 sumCosts _ _ = Infty
 
+-- dodaje sekundy do czasu w formacie UTCTime
 addSecondsToUTCTime secs time = posixSecondsToUTCTime ((utcTimeToPOSIXSeconds time) + (realToFrac secs :: POSIXTime) )
 
+-- różnica w czasie w sekundach
 diffUTCTimeInSecs timea timeb = floor $ toRational $ (utcTimeToPOSIXSeconds timea) - (utcTimeToPOSIXSeconds timeb)
 
+-- rozkłada kursy na poszczególne godziny rozpoczęcia
 expandTrackInst [] _ _ _ = []
 expandTrackInst (fst:track_stns) beg tck_id start_time = 
   (ExpandedTrackStation {trck_id = tck_id,
@@ -664,13 +682,16 @@ expandTrackInst (fst:track_stns) beg tck_id start_time =
     node_id = 0
   }):expandTrackInst track_stns (beg+ (stop_time fst) + (travel_time fst)) tck_id start_time
 
+-- przypisuje id do pojedynczej trasy
 assignIdToTrack [] _ = []
 assignIdToTrack (fst:trk) n =
   (fst{node_id = n}):assignIdToTrack trk (n+1)
 
+-- przypisuje id do wszystkich tras (związane w wyszukiwanie nakrótszej ścieżki w grafie)
 assignIdsToAll [] _ = []
 assignIdsToAll (fst:exp_tracks) n = (assignIdToTrack fst n):(assignIdsToAll exp_tracks (n+(length fst)))
 
+-- rozkłada pojedynczy kurs
 expandTrack :: Track -> [[ExpandedTrackStation]]
 expandTrack track = 
   let m = map (expandTrackInst (track_stations track) 0 (track_id track) ) (track_starts track)
@@ -689,6 +710,8 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   -- wszystkie kursy, które mają szanse być w grafie
 --  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
 
+-- główna funkcja algorytmu do wyszukiwania najkrótszej ścieżki
+-- wykonuje algorytm dla pojedynczych rozkładów stacji
 algorithm :: Time -> Int -> StationId -> StationId -> [Track] -> [[[ExpandedTrackStation]]]
 algorithm day max_p src_v dest_v tracks =
   (map (algorithm_inst exp_track_stns dest_v max_p) source_exp_track_stations)
@@ -697,6 +720,7 @@ algorithm day max_p src_v dest_v tracks =
   flat_exp_tracks_stns = foldl (++) [] exp_track_stns
   source_exp_track_stations = getSourceExpandedTrackStations flat_exp_tracks_stns day src_v
 
+-- wyznacza ścieżkę na podstawie algorytmu Dijkstry 
 getPathNodes :: NodeId -> NodeId -> [PathCost] -> Maybe [NodeId]
 getPathNodes src_nd dst_nd paths =
   if src_nd == dst_nd 
@@ -717,10 +741,12 @@ getPathNodes src_nd dst_nd paths =
       where
         v = find (\u -> (nod_id u) == dst_nd) paths
 
+-- zamienia ścieżki w grafie na relacje między stacjami
 buildPath ::  [NodeId] -> [ExpandedTrackStation] -> [ExpandedTrackStation]
 buildPath paths exp_tracks = 
   foldl (++) [] (map (\nid -> filter (\el -> (node_id el) == nid) exp_tracks) paths)
 
+-- instancja lgorytmu wywoływana dla konkretnego rozkładu stacji
 algorithm_inst exp_tracks dest_v max_p source_exp_track = 
   buildPaths pathNodes flat_avail_exp_tracks
   where
@@ -730,7 +756,9 @@ algorithm_inst exp_tracks dest_v max_p source_exp_track =
   graph = makeEdges avail_exp_tracks
   paths = dijkstra graph (node_id source_exp_track)
   pathNodes = [getPathNodes (node_id source_exp_track) d_v paths | d_v <- dest_v']
-    
+
+
+-- wyznacza całkoiwy koszt przejazdu    
 totalPathCost :: [ExpandedTrackStation] -> Cost
 totalPathCost [lst] = Finite(0,-(diffUTCTimeInSecs (departure lst) (arrival lst)))
 totalPathCost (x:y:rest) = 
@@ -739,15 +767,18 @@ totalPathCost (x:y:rest) =
     dst = diffUTCTimeInSecs (departure y) (departure x)
     cng = if (st_id x) == (st_id y) then 1 else 0
 
+-- sortuje kursy rosnąco względem czasu przejazdu
 sortPaths :: [[ExpandedTrackStation]] -> [[ExpandedTrackStation]]
 sortPaths paths = sortBy (\x y -> compare (totalPathCost x) (totalPathCost y) ) paths
-  
+
+-- buduje kursy dla wszystkich ścieżek
 buildPaths [] _ = []
 buildPaths (x:xs) flat_avail_exp_tracks = 
   case x of
     Nothing -> buildPaths xs flat_avail_exp_tracks 
     Just pth -> (buildPath pth flat_avail_exp_tracks ):(buildPaths xs flat_avail_exp_tracks )  
-  
+
+-- tworzy krawędzie w grafie  
 makeEdges :: [[ExpandedTrackStation]] -> [Edge]
 makeEdges avail_exp_tracks = 
   track_edges ++ station_edges
@@ -757,30 +788,38 @@ makeEdges avail_exp_tracks =
     station_edges = foldl (++) [] (map (makeStationEdge flat_avail_exp_tracks) stns)
     track_edges = foldl (++) [] (map makeTrackEdge avail_exp_tracks)
 
-
+-- tworzy kraędzi łączącą te same stacje w ramach różnych relacji
 makeStationEdge flat_avail_exp_tracks stn_id =
   [Edge {src_node = (node_id x),dest_node = (node_id y), change_weigth = 1, time_weigth = (diffUTCTimeInSecs (departure y) (arrival x)) }|x <- flat_avail_exp_tracks, y <- flat_avail_exp_tracks,  (departure y) > (arrival x), (node_id x) /= (node_id y), (st_id x) == stn_id, (st_id y) == stn_id]
 
+-- wyznacza wierzchołki grafu
 nodes :: [Edge] -> [NodeId]
 nodes edges = nub (foldl (++) [] (map (\v -> [src_node v, dest_node v]) edges))
 
-
+-- znajduje krawędź w grafie
 findEInGraph _ [] = Nothing
 findEInGraph (u,v) (fst:edges)
   | (u == (src_node fst) && v == (dest_node fst)) = Just ((change_weigth fst), (time_weigth fst))
   | otherwise = findEInGraph (u,v) edges
 
+-- funkcja pomocnicza dla wyszukiwania krawedziw grafie
 findE :: (NodeId, NodeId) -> [Edge] -> Cost
 findE edge = maybe Infty Finite . findEInGraph edge
 
-
-
+-- usuwa krawędź z grafu
 remove :: Eq a => a -> [a] -> [a]
 remove = flip (\\) . flip (:) []
 
+-- wyznacza sumę dwóch kosztów
 sumPaths :: PathCost -> PathCost -> PathCost
 sumPaths a b =  PathCost {prev_node = (nod_id a), nod_id = (nod_id b), dist = (sumCosts (dist a) (dist b))}
 
+-- serce algorytmu dikstry
+-- niech A to zbiór wierzchołków z wyznaczonymi optymalnymi ścieżkami
+-- wyznacza wierchołek v najbliższy zbiorowi A spośród krawędzi E-A
+-- relaksuje pozostałe wierzchołki
+-- dodaje v do A
+-- dopóki E-A nie jest puste
 dijkstra :: [Edge] -> NodeId -> [PathCost]
 dijkstra graph src = 
   addPaths [PathCost{prev_node = src, nod_id = node, dist = (findE (src, node) graph)}| node <- nodes graph] []
@@ -795,6 +834,7 @@ dijkstra graph src =
           where
             nc = (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
 
+-- tworzy krawędź w pomiędzy stacjami w ramach jednej relacji
 makeTrackEdge [] = []
 makeTrackEdge [x] = []
 makeTrackEdge (fstel:secel:avail_exp_track) = 
