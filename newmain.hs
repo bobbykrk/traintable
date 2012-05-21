@@ -50,8 +50,8 @@ data Track = Track {
   track_name :: String,
   track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
   track_stations :: [TrackStation]
-} --deriving (Show) --trzeba zakomentować
---foldl (&&) True (map (\track -> any ((\el -> stn_id == numid)track_stations) track) (tracks trs))
+} 
+
 data Tracks = Tracks {
   track_counter :: Int,
   tracks :: [Track]
@@ -88,21 +88,12 @@ instance Show Track where
 instance Show TrackStation where
   show tr = printf "Id stacji: %d :: czas postoju: %dmin :: czas dojazdu do kolejnej: %dmin" (stn_id tr) (stop_time tr) (travel_time tr)
   
- -- TrackStation {stn_id = 1, stop_time = 10, travel_time = 20}
---TrackStation {stn_id = 2, stop_time = 20, travel_time = 0}
-    --(mapM_ (putStrLn . show) (track_starts tr))
---map (expandTrackInst (track_stations track) 0 (track_id track) ) (track_starts track)
-  
   
 instance Show ExpandedTrackStation where
   show tr = show (arrival tr) ++ printf" :: " ++ show(departure tr) ++ printf" :: " ++ show(st_id tr) ++ printf" :: " ++ show(trck_id tr)
   --trasa z A do B
   --arrival departure (nazwa stacji) (nazwa kursu) informacja o przesiadce
   
---  track_id :: TrackId,
---  track_name :: String,
---  track_starts :: [Time], -- lista dokładnych momentów (data+godzina) wyruszenia pociągu z pierwszej stacji
---  track_stations :: [TrackStation]
   
 instance Eq Edge where
   (==) = edgeEq
@@ -110,8 +101,6 @@ instance Eq Edge where
 instance Eq PathCost where
   (==) = pathCostEq
 
---instance Ord Cost where
---  (<) = costOrd
 
 instance Ord PathCost where
   (<) = pathCostOrd 
@@ -278,7 +267,6 @@ tracksEdit stns trs = do
       tracksEdit stns trs
     "3" -> do
       trs' <- addTrack stns trs
-      --putStrLn $ show trs'
       tracksEdit stns trs'
     "4" -> do
       trs' <- editTrack stns trs
@@ -331,12 +319,10 @@ addStationsLoop stns new_stations = do
   then do
     putStrLn notFounIdxError
     return []
-    --return new_stations
   else if new_stations /= [] && (read stnid :: Int) == stn_id (last new_stations)
   then do
     putStrLn "Dwie kolejne stacje muszą być inne!"
     return []
-    --addStationsLoop stns new_stations
   else do
     let numid =  read stnid :: Int
     case (find (\v -> (station_id v == numid)) (stations stns)) of
@@ -395,7 +381,6 @@ showStations stns trs = do
   notFounIdxError = "Nie ma takiego indeksu"  
 
 printTrackStations stns tr = do
-  ---putStrLn "asd"
   let id = (stn_id tr)
   let Just name = getStationName id stns
   printf"%d     :: %s     :: %dmin     :: %dmin\n" (stn_id tr) name (stop_time tr) (travel_time tr)
@@ -585,7 +570,6 @@ printRoute stns trs = do
 
 printRouteLoop _ _ [] _ _ = putStrLn "Nie istnieje takie połączenie"
 printRouteLoop stns trs route [] c = do
---mapM_ (putStrLn . show) route
   let Just nameS = getStationName 1 stns
   let Just nameT = getTrackName 1 trs
   let x = head route
@@ -596,14 +580,10 @@ printRouteLoop stns trs route [] c = do
 printRouteLoop stns trs (x:route) (y:change) c = do
   let Just nameS = getStationName 1 stns
   let Just nameT = getTrackName 1 trs
-  --print nameS
- -- print nameT
---show tr = show (arrival tr) ++ printf" :: " ++ show(departure tr) ++ printf" :: " ++ show(st_id tr) ++ printf" :: " ++ show(trck_id tr)
   let c'=c+1
   if y==c 
   then do
     putStrLn"PRZESIADKA"
-    --print x
     let z= show (arrival x) ++ printf" :: " ++ show(departure x) ++ printf" :: " ++ show(st_id x) ++ printf" :: %s :: " nameS ++ show(trck_id x) ++ printf" :: %s" nameT
     print z
     printRouteLoop stns trs route change c'
@@ -651,11 +631,6 @@ edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))
 
 pathCostEq :: PathCost -> PathCost -> Bool
 pathCostEq a b = ((nod_id a) == (nod_id b))
-
---costOrd :: Cost -> Cost -> Cost
---costOrd (Finite (ap,ac)) (Finite (bp,bc)) = ((ap < bp) || ((ap == bp) && (ac < bc)))
---costOrd Infty _ = False
---costOrd (Finite _) Infty = True
 
 -- ustala porządek w strukturz PathCost
 pathCostOrd :: PathCost -> PathCost -> Bool
@@ -705,10 +680,6 @@ getSourceExpandedTrackStations flat_exp_tracks time v_id =
   today = UTCTime d 0
   tomorrow =  addSecondsToUTCTime (60*60*24) today
 
---makeGraph source_v exp_tracks
---  where
-  -- wszystkie kursy, które mają szanse być w grafie
---  avail_exp_tracks = filter (\track -> (any (\v -> (departure v) > (arrival source_v)) track)) exp_tracks
 
 -- główna funkcja algorytmu do wyszukiwania najkrótszej ścieżki
 -- wykonuje algorytm dla pojedynczych rozkładów stacji
