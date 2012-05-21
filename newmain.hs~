@@ -645,6 +645,13 @@ getTrackName id trcks =
   Nothing -> Nothing
   Just el -> Just (track_name el)
 
+checkStationExist :: StationId -> Tracks -> [Bool]
+checkStationExist id trcks = 
+--  foldl (&&) True (map (\track -> any (\el -> st_id track == id) track) (tracks trcks))
+  map (\trck -> any (\el -> stn_id el == id) (track_stations trck)) tcks
+  where
+    tcks = tracks trcks
+
 -- sprawdza czy węzły grafu są takie same
 edgeEq :: Edge -> Edge -> Bool
 edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
@@ -834,6 +841,7 @@ dijkstra graph src =
           where
             nc = (sumCosts (dist minp) (findE (nod_id minp, nod_id pc) graph ) )
 
+-- tworzy krawędź w pomiędzy stacjami w ramach jednej relacji
 makeTrackEdge [] = []
 makeTrackEdge [x] = []
 makeTrackEdge (fstel:secel:avail_exp_track) = 

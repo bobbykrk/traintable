@@ -645,6 +645,12 @@ getTrackName id trcks =
   Nothing -> Nothing
   Just el -> Just (track_name el)
 
+checkStationExist :: StationId -> Tracks -> Bool
+checkStationExist id trcks = 
+  foldl (&&) True (map (\trck -> any (\el -> stn_id el == id) (track_stations trck)) tcks)
+  where
+    tcks = tracks trcks
+
 -- sprawdza czy węzły grafu są takie same
 edgeEq :: Edge -> Edge -> Bool
 edgeEq a b = (((src_node a) == (src_node b)) && ((dest_node a) == (dest_node b))) 
