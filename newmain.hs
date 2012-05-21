@@ -621,35 +621,6 @@ getRoute stns trs = do
   else do
     let res' = head res
     return res'
-  
---  if stnid == [] || checkDigits stnid == False
---  then do
---    putStrLn notFounIdxError
---  else do
---    let numid =  read stnid :: Int
---    case (find (\v -> (station_id v == numid)) (stations stns)) of
---      Nothing -> do 
---        putStrLn notFounIdxError
---      Just found -> do 
---        let x = generateTimetable numid (tracks trs)
-        --let x = sortTimeTable x
---        print x
---  where
---  notFounIdxError = "Nie ma takiego indeksu"
-
--- pobiera nazwę stacji dla danego id
-getStationName :: StationId -> Stations -> Maybe String
-getStationName id stns = 
-  case find (\el -> (station_id el) == id) (stations stns) of
-  Nothing -> Nothing
-  Just el -> Just (station_name el)
-
--- pobiera nazwę relacji dla danego id
-getTrackName :: TrackId -> Tracks -> Maybe String
-getTrackName id trcks = 
-  case find (\el -> (track_id el) == id) (tracks trcks) of
-  Nothing -> Nothing
-  Just el -> Just (track_name el)
 
 -- sprawdza czy węzły grafu są takie same
 edgeEq :: Edge -> Edge -> Bool
@@ -870,15 +841,17 @@ generateSchedule stns trs = do
       Just found -> do 
         let x = generateTimetable numid (tracks trs)
         let x' = sortTimeTable x
-        putStrLn "ID KURSU :: CZAS PRZYJAZDU :: CZAS ODJAZDU"
+        putStrLn "ID KURSU :: NAZWA KURSU :: CZAS PRZYJAZDU :: CZAS ODJAZDU"
         if x == [] 
         then putStrLn "BRAK KURSÓW"
         else do
-          let y = map printSched x'
+          let y = map (printSched trs) x'
           mapM_  (putStrLn . show) y
   where
   notFounIdxError = "Nie ma takiego indeksu"
-  printSched (a,b,c) = printf"%d :: " a ++ show b ++ printf" :: " ++ show c
+  printSched trs (a,b,c) = do
+    let name = getTrackName a trs
+    printf"%d :: " a ++ show name ++ printf" :: " ++ show b ++ printf" :: " ++ show c
 
 genTrackTimetable :: StationId -> [[ExpandedTrackStation]] -> [(TrackId, Time, Time)]
 genTrackTimetable _ [] = []
@@ -897,3 +870,16 @@ generateTimetable stn (fst:tracks) =
 sortTimeTable :: [(TrackId, Time, Time)] -> [(TrackId, Time, Time)]
 sortTimeTable = sortBy (\(tida,aa,da) (tidb,ab,db) -> (compare (aa,da)  (ab,db)))
 
+-- pobiera nazwę stacji dla danego id
+getStationName :: StationId -> Stations -> Maybe String
+getStationName id stns = 
+  case find (\el -> (station_id el) == id) (stations stns) of
+  Nothing -> Nothing
+  Just el -> Just (station_name el)
+
+-- pobiera nazwę relacji dla danego id
+getTrackName :: TrackId -> Tracks -> Maybe String
+getTrackName id trcks = 
+  case find (\el -> (track_id el) == id) (tracks trcks) of
+  Nothing -> Nothing
+  Just el -> Just (track_name el)
